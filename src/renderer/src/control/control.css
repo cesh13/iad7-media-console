@@ -121,71 +121,165 @@
   border-color: var(--preview);
 }
 
-.layout {
-  display: block;
-  width: 100%;
-  max-height: 200px;
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
-.layout-screen {
-  fill: var(--bg-card);
-  stroke: var(--border-control);
-  stroke-width: 12;
-}
-.layout-screen.is-output {
-  fill: var(--preview-tint);
-  stroke: var(--preview);
-}
-.layout-text {
-  fill: var(--text);
-  font-family: var(--font-ui);
-  font-size: 120px;
-  font-weight: 600;
-  text-anchor: middle;
-  dominant-baseline: middle;
+.panel-head .label {
+  flex: 1;
+  margin: 0;
 }
 
+/* Screens page: one card per screen, in the same order as in Windows (left to right). */
 .screen-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 12px;
+}
+.screen-card {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.screen-card.is-output {
+  border: 2px solid var(--preview);
+}
+.screen-face {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  max-height: 220px;
+  border-bottom: 1px solid var(--border-panel);
+}
+.screen-card.is-output .screen-face {
+  background: var(--preview-tint);
+  border-bottom-color: var(--preview);
+}
+.screen-face.is-live {
+  background: #000;
+}
+.screen-face-label {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.screen-badges {
+  z-index: 2;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+}
+.screen-badges .badge {
+  margin-left: 0;
+}
+.screen-face-num {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+.screen-face-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.screen-card:not(.is-output) .screen-face-name {
+  color: var(--text-2);
+  font-weight: 400;
+}
+.screen-face-info {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.screen-controls {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 10px;
 }
-.screen-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-panel);
-  border-radius: 6px;
-}
-.screen-card.is-output {
-  border-color: var(--preview);
-}
-.screen-num {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 6px;
-  background: var(--bg-button);
-  font-size: 15px;
-  font-weight: 500;
-}
-.screen-info {
-  flex: 1;
+.screen-controls .input {
+  width: 100%;
   min-width: 0;
 }
-.screen-title {
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-weight: 600;
-  margin-bottom: 2px;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.switch-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--bg-button);
+  border: 1px solid var(--border-control);
+}
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition: left 0.15s;
+}
+.switch input:checked + .switch-track {
+  background: var(--preview);
+  border-color: var(--preview);
+}
+.switch input:checked + .switch-track::after {
+  left: 16px;
+  background: var(--bg-page);
+}
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--preview);
+  outline-offset: 2px;
+}
+.screen-note {
+  margin: 0;
 }
 .screen-form {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.not-output {
-  min-width: 90px;
+.select.is-warn {
+  border-color: var(--warn);
+  color: var(--warn);
 }
 
 .missing-row {
@@ -218,16 +312,6 @@
   color: var(--text);
   font-weight: 600;
   border-bottom-color: var(--preview);
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.toolbar .help {
-  flex: 1;
-  margin: 0;
 }
 
 /* ---- Service page: order | center | group ---- */
@@ -671,10 +755,10 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 10px 0 14px;
 }
-.logo-row > div:nth-child(2) {
+.logo-info {
   flex: 1;
+  min-width: 0;
 }
 .logo-thumb {
   width: 96px;
@@ -690,22 +774,11 @@
   max-width: 100%;
   max-height: 100%;
 }
-.ungrouped {
-  padding: 8px 12px;
-  border: 1px solid var(--warn);
-  border-radius: 6px;
-  margin-bottom: 12px;
-}
-.ungrouped-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-}
 .group-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 10px;
+  margin-top: 10px;
 }
 .group-editor {
   display: flex;
@@ -732,6 +805,9 @@
 .group-field .label-inline {
   width: 130px;
 }
+.group-note {
+  margin: 0 0 0 140px;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -753,6 +829,35 @@
   border-color: var(--preview);
   color: var(--preview);
 }
+.screen-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px 0 4px;
+  background: var(--preview-tint);
+  border: 1px solid var(--preview);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.screen-tag-num {
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--preview);
+  color: var(--bg-page);
+}
+.screen-tag.is-missing {
+  background: var(--warn-tint);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.screen-tag.is-missing .screen-tag-num {
+  background: var(--warn);
+}
 .idle-files {
   display: flex;
   flex-wrap: wrap;
@@ -768,10 +873,6 @@
   margin: 0;
   font-size: 12px;
 }
-.add-group {
-  margin-top: 12px;
-}
-
 /* ---- Step 4: preview panel, small live copies ---- */
 .preview-head {
   display: flex;

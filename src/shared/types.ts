@@ -607,7 +607,8 @@ export interface MediaConsoleApi {
   saveOutput(displayKey: string, name: string): Promise<ScreensState>
   removeOutput(outputId: string): Promise<ScreensState>
   openTest(electronIds: number[]): Promise<ScreensState>
-  closeTests(): Promise<ScreensState>
+  /** Close the test windows on these screens, or all of them when no ids are given. */
+  closeTests(electronIds?: number[]): Promise<ScreensState>
   onTestInfo(callback: (info: TestInfo) => void): () => void
   addGroup(name: string): Promise<void>
   removeGroup(groupId: string): Promise<void>

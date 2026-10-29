@@ -223,8 +223,8 @@ function registerIpc(): void {
     return screensState()
   })
 
-  ipcMain.handle('test:close', () => {
-    closeTestWindows()
+  ipcMain.handle('test:close', (_e, electronIds?: number[]) => {
+    closeTestWindows(electronIds)
     return screensState()
   })
 

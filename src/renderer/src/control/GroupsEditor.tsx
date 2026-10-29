@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GroupConfig, IdleKind, ScreensState } from '../../../shared/types'
 import { strings } from '../strings'
 
@@ -6,87 +6,101 @@ const api = window.mediaConsole
 
 const idleKinds: IdleKind[] = ['black', 'logo', 'background', 'loop']
 
-/** "Edit groups": screens per group, idle screen per group, and the church logo. */
+/** "Edit groups": what each group shows (service or stage view), and its idle screen. */
 export function GroupsEditor({ state }: { state: ScreensState }) {
-  const [newName, setNewName] = useState('')
-  const grouped = new Set(state.groups.flatMap((g) => g.outputIds))
-  const ungrouped = state.outputs.filter((o) => !grouped.has(o.output.id))
+  // The ids before "Add group", so the new group can be found when the state comes back.
+  const [idsBefore, setIdsBefore] = useState<string[] | null>(null)
+  const [newId, setNewId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!idsBefore) return
+    const added = state.groups.find((g) => !idsBefore.includes(g.id))
+    if (added) {
+      setNewId(added.id)
+      setIdsBefore(null)
+    }
+  }, [state.groups])
+
+  /** Add a group with a default name ("Group 3"). The name can be changed in its card. */
+  const addGroup = () => {
+    const names = new Set(state.groups.map((g) => g.name))
+    let n = state.groups.length + 1
+    while (names.has(strings.defaultGroupName(n))) n++
+    setIdsBefore(state.groups.map((g) => g.id))
+    void api.addGroup(strings.defaultGroupName(n))
+  }
 
   return (
     <section className="panel">
-      <h2 className="label">{strings.groupsLabel}</h2>
+      <div className="panel-head">
+        <h2 className="label">{strings.groupsLabel}</h2>
+        <button className="btn" onClick={addGroup}>
+          + {strings.addGroup}
+        </button>
+      </div>
       <p className="help">{strings.groupsHelp}</p>
 
+      <div className="group-list">
+        {state.groups.map((g) => (
+          <GroupEditor
+            key={g.id}
+            group={g}
+            state={state}
+            canRemove={state.groups.length > 1}
+            isNew={g.id === newId}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** The church logo. One logo for the whole app: the Logo button and groups with the "Logo" idle screen use it. */
+export function LogoSection({ state }: { state: ScreensState }) {
+  return (
+    <section className="panel">
+      <h2 className="label">{strings.logoLabel}</h2>
       <div className="logo-row">
         <div className="logo-thumb">{state.logo?.url && <img src={state.logo.url} alt="" />}</div>
-        <div>
-          <div className="screen-title">{strings.logoLabel}</div>
-          <div className="mono dim">{state.logo?.path ?? strings.noLogo}</div>
+        <div className="logo-info">
+          <div className="mono" title={state.logo?.path}>
+            {state.logo ? state.logo.path.split(/[\\/]/).pop() : strings.noLogo}
+          </div>
+          <div className="dim small">{strings.logoHelp}</div>
         </div>
         <button className="btn" onClick={() => void api.pickLogo()}>
           {strings.chooseLogo}
         </button>
       </div>
-
-      {ungrouped.length > 0 && (
-        <div className="panel-warn ungrouped">
-          {ungrouped.map((o) => (
-            <div key={o.output.id} className="ungrouped-row">
-              <span className="dot dot-warn" />
-              <span className="missing-name">{o.output.name}</span>
-              <span className="dim">{strings.notInGroup}</span>
-              <select
-                className="input select"
-                value=""
-                onChange={(e) => void api.assignOutput(o.output.id, e.target.value || null)}
-              >
-                <option value="">{strings.addToGroup}</option>
-                {state.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="group-list">
-        {state.groups.map((g) => (
-          <GroupEditor key={g.id} group={g} state={state} canRemove={state.groups.length > 1} />
-        ))}
-      </div>
-
-      <form
-        className="screen-form add-group"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void api.addGroup(newName).then(() => setNewName(''))
-        }}
-      >
-        <input
-          className="input"
-          value={newName}
-          placeholder={strings.newGroupPlaceholder}
-          onChange={(e) => setNewName(e.target.value)}
-        />
-        <button className="btn" type="submit">
-          + {strings.addGroup}
-        </button>
-      </form>
     </section>
   )
 }
 
-function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: ScreensState; canRemove: boolean }) {
+function GroupEditor(props: { group: GroupConfig; state: ScreensState; canRemove: boolean; isNew: boolean }) {
+  const { group, state, canRemove, isNew } = props
   const [name, setName] = useState(group.name)
   useEffect(() => setName(group.name), [group.name])
+  const nameRef = useRef<HTMLInputElement>(null)
+  // A new group: put the cursor in its name, with the default name selected, ready to type over.
+  useEffect(() => {
+    if (!isNew) return
+    nameRef.current?.focus()
+    nameRef.current?.select()
+  }, [isNew])
   const saveName = () => {
     if (name.trim() && name.trim() !== group.name) void api.updateGroup(group.id, { name })
   }
+  const stage = !!group.stageView
   const needsMedia = (group.idle === 'background' || group.idle === 'loop') && group.idleMedia.length === 0
   const needsLogo = group.idle === 'logo' && !state.logo
+  // The screens of this group, with the same numbers as the screen cards above.
+  const members = state.outputs
+    .filter((o) => group.outputIds.includes(o.output.id))
+    .map((o) => ({
+      id: o.output.id,
+      name: o.output.name,
+      num: o.screen ? state.screens.findIndex((s) => s.electronId === o.screen!.electronId) + 1 : null
+    }))
 
   return (
     <div className="group-editor">
@@ -94,64 +108,75 @@ function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: S
         <input
           className="input group-name"
           value={name}
+          ref={nameRef}
           onChange={(e) => setName(e.target.value)}
           onBlur={saveName}
           onKeyDown={(e) => e.key === 'Enter' && saveName()}
         />
-        <button className="btn btn-quiet" disabled={!canRemove} onClick={() => void api.removeGroup(group.id)}>
-          {strings.removeGroup}
-        </button>
+        {canRemove && (
+          <button
+            className="btn btn-quiet"
+            title={strings.removeGroup}
+            aria-label={strings.removeGroup}
+            onClick={() => void api.removeGroup(group.id)}
+          >
+            ×
+          </button>
+        )}
       </div>
-
       <div className="group-field">
         <span className="label-inline">{strings.groupScreens}</span>
         <div className="chips">
-          {state.outputs.length === 0 && <span className="dim">{strings.noOutputsShort}</span>}
-          {state.outputs.map((o) => {
-            const inGroup = group.outputIds.includes(o.output.id)
-            return (
-              <button
-                key={o.output.id}
-                className={inGroup ? 'chip is-on' : 'chip'}
-                onClick={() => void api.assignOutput(o.output.id, inGroup ? null : group.id)}
-              >
-                {inGroup ? '✓ ' : '+ '}
-                {o.output.name}
-                {!o.screen && ` (${strings.notConnected})`}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="group-field">
-        <span className="label-inline">{strings.stageViewLabel}</span>
-        <label className="check small">
-          <input
-            type="checkbox"
-            checked={!!group.stageView}
-            onChange={(e) => void api.updateGroup(group.id, { stageView: e.target.checked })}
-          />
-          {strings.stageViewHelp}
-        </label>
-      </div>
-
-      <div className="group-field">
-        <span className="label-inline">{strings.idleLabel}</span>
-        <div className="chips">
-          {idleKinds.map((k) => (
-            <button
-              key={k}
-              className={group.idle === k ? 'chip is-on' : 'chip'}
-              onClick={() => void api.updateGroup(group.id, { idle: k })}
-            >
-              {strings.idleKinds[k]}
-            </button>
+          {members.length === 0 && <span className="dim small">{strings.groupNoScreensPick}</span>}
+          {members.map((m) => (
+            <span key={m.id} className={m.num ? 'screen-tag' : 'screen-tag is-missing'}>
+              <span className="screen-tag-num mono">{m.num ?? '?'}</span>
+              {m.name}
+              {!m.num && ` (${strings.notConnected})`}
+            </span>
           ))}
         </div>
       </div>
 
-      {(group.idle === 'background' || group.idle === 'loop') && (
+      <div className="group-field">
+        <span className="label-inline">{strings.groupShows}</span>
+        <div className="chips">
+          <button
+            className={stage ? 'chip' : 'chip is-on'}
+            onClick={() => void api.updateGroup(group.id, { stageView: false })}
+          >
+            {strings.showsService}
+          </button>
+          <button
+            className={stage ? 'chip is-on' : 'chip'}
+            title={strings.stageViewHelp}
+            onClick={() => void api.updateGroup(group.id, { stageView: true })}
+          >
+            {strings.stageViewLabel}
+          </button>
+        </div>
+      </div>
+
+      {stage && <p className="dim small group-note">{strings.stageViewHelp}</p>}
+
+      {!stage && (
+        <div className="group-field">
+          <span className="label-inline">{strings.idleLabel}</span>
+          <div className="chips">
+            {idleKinds.map((k) => (
+              <button
+                key={k}
+                className={group.idle === k ? 'chip is-on' : 'chip'}
+                onClick={() => void api.updateGroup(group.id, { idle: k })}
+              >
+                {strings.idleKinds[k]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!stage && (group.idle === 'background' || group.idle === 'loop') && (
         <div className="group-field">
           <span className="label-inline">{strings.idleFiles}</span>
           <div className="idle-files">
@@ -162,7 +187,7 @@ function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: S
               </span>
             ))}
             <button className="btn btn-small" onClick={() => void api.pickIdleMedia(group.id)}>
-              {strings.chooseFiles}
+              {group.idleMedia.length ? strings.changeFiles : strings.chooseFiles}
             </button>
             {group.idleMedia.length > 0 && (
               <button className="btn btn-small btn-quiet" onClick={() => void api.clearIdleMedia(group.id)}>
@@ -173,7 +198,7 @@ function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: S
         </div>
       )}
 
-      {group.idle === 'loop' && (
+      {!stage && group.idle === 'loop' && (
         <div className="group-field">
           <span className="label-inline">{strings.idleInterval}</span>
           <input
@@ -186,7 +211,9 @@ function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: S
         </div>
       )}
 
-      {(needsMedia || needsLogo) && <p className="warn idle-warn">{needsLogo ? strings.idleNeedsLogo : strings.idleNeedsFiles}</p>}
+      {!stage && (needsMedia || needsLogo) && (
+        <p className="warn idle-warn">{needsLogo ? strings.idleNeedsLogo : strings.idleNeedsFiles}</p>
+      )}
     </div>
   )
 }

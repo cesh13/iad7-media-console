@@ -42,8 +42,12 @@ export function openTestWindow(s: ScreenInfo, index: number, outputName: string 
   onChange()
 }
 
-export function closeTestWindows(): void {
-  for (const win of windows.values()) if (!win.isDestroyed()) win.close()
+/** Close the test windows on these screens, or all test windows when no ids are given. */
+export function closeTestWindows(electronIds?: number[]): void {
+  for (const [id, win] of windows) {
+    if (electronIds && !electronIds.includes(id)) continue
+    if (!win.isDestroyed()) win.close()
+  }
 }
 
 /** Call after the screens change: close windows on removed screens, move the others. */

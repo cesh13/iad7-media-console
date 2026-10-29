@@ -77,6 +77,29 @@ function AudioLayerCard() {
   )
 }
 
+/** A small live copy of what the screens of a group show now (no sound). Fills its parent. */
+export function GroupLiveView({ group, state }: { group: GroupView; state: ServiceState }) {
+  const { config, live } = group
+  if (group.stage) return <StageView stage={group.stage} />
+  const playback = live.content ? state.playback[live.content.take] : undefined
+  return (
+    <ScreenView
+      content={live.content}
+      text={live.text}
+      idle={{
+        kind: config.idle,
+        media: config.idleMedia
+          .filter((m) => m.url && m.type !== 'audio')
+          .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! })),
+        interval: config.idleInterval
+      }}
+      logoUrl={state.logoUrl}
+      overlays={state.overlays}
+      syncTime={playback?.currentTime}
+    />
+  )
+}
+
 function GroupCard({ group, state, screens }: { group: GroupView; state: ServiceState; screens: ScreensState | null }) {
   const { config, live } = group
   const content = live.content
@@ -98,24 +121,7 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
         </button>
       </div>
       <div className="mini">
-        {group.stage ? (
-          <StageView stage={group.stage} />
-        ) : (
-          <ScreenView
-            content={content}
-            text={live.text}
-            idle={{
-              kind: config.idle,
-              media: config.idleMedia
-                .filter((m) => m.url && m.type !== 'audio')
-                .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! })),
-              interval: config.idleInterval
-            }}
-            logoUrl={state.logoUrl}
-            overlays={state.overlays}
-            syncTime={playback?.currentTime}
-          />
-        )}
+        <GroupLiveView group={group} state={state} />
       </div>
       {content && item ? (
         <div className="group-now">
