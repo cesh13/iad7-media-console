@@ -38,9 +38,11 @@ const fadeSeconds = 1
 
 export function ScreenView(props: ScreenViewProps) {
   const { content, overlays, text } = props
-  // Full-screen text shows over the idle background (not over the logo).
+  // Full-screen text shows over the idle background (not over the logo), when its style says so.
   const textFull = !!text && text.settings.mode !== 'lower'
-  const showIdle = !content && (!textFull || props.idle.kind === 'background' || props.idle.kind === 'loop')
+  const textOverIdle = (text?.style?.background ?? 'idle') === 'idle'
+  const showIdle =
+    !content && (!textFull || (textOverIdle && (props.idle.kind === 'background' || props.idle.kind === 'loop')))
   return (
     <div className="screen-view">
       {showIdle && <IdleScreen idle={props.idle} logoUrl={props.logoUrl} />}

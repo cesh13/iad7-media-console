@@ -1855,3 +1855,70 @@
 .ok-text {
   color: var(--ok);
 }
+
+/* ---- Text style window ---- */
+.text-style-dialog {
+  width: min(960px, 94vw);
+}
+.text-style-body {
+  display: flex;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.text-style-preview {
+  position: relative;
+  flex: 1.2;
+  align-self: flex-start;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+}
+.text-style-options {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.color-input {
+  width: 40px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.swatch {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-control);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ---- Typed text (songs, announcements) ---- */
+.song-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.song-text {
+  min-height: 220px;
+  resize: vertical;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* Volume of the live video. */
+.live-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+.live-volume input {
+  width: 90px;
+}

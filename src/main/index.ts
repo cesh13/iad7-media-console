@@ -11,7 +11,9 @@ import type {
   Service,
   ServiceState,
   Settings,
-  Target
+  Target,
+  TextStyle,
+  TextStyleKind
 } from '../shared/types'
 import * as audio from './audio'
 import * as bible from './bible'
@@ -37,6 +39,7 @@ import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
 import { loadSettings, saveSettings } from './settings'
+import * as textStyles from './textStyles'
 import {
   closeTestWindows,
   onTestWindowsChanged,
@@ -81,7 +84,8 @@ function serviceStateFull(): ServiceState {
     messages: stage.savedMessages(),
     services: listServices(),
     library: library.libraryFolders(),
-    favorites: library.favorites()
+    favorites: library.favorites(),
+    textStyles: textStyles.textStyles()
   }
 }
 
@@ -284,6 +288,24 @@ function registerIpc(): void {
   ipcMain.handle('service:updateItem', (_e, id: string, change: Parameters<typeof svc.updateItem>[1]) =>
     svc.updateItem(id, change)
   )
+  ipcMain.handle('service:newTextItem', () => svc.newTextItem())
+  ipcMain.handle('service:undo', () => svc.undo())
+  ipcMain.handle('service:pickItemBackground', async (_e, id: string) => {
+    const [path] = await pickPaths({ multi: false, extensions: mediaExtensions, name: 'Video and images' })
+    const ref = path ? groups.mediaRef(path) : null
+    if (ref && ref.type !== 'audio') svc.updateItem(id, { settings: { background: ref } })
+  })
+
+  // ---- Text styles ----
+  ipcMain.handle('textStyles:set', (_e, kind: TextStyleKind, change: Partial<TextStyle>) => {
+    const { backgroundMedia: _ignored, ...rest } = change
+    textStyles.setTextStyle(kind, rest)
+  })
+  ipcMain.handle('textStyles:pickBackground', async (_e, kind: TextStyleKind) => {
+    const [path] = await pickPaths({ multi: false, extensions: mediaExtensions, name: 'Video and images' })
+    if (path) textStyles.setTextBackground(kind, path)
+  })
+  ipcMain.handle('textStyles:reset', (_e, kind: TextStyleKind) => textStyles.resetTextStyle(kind))
 
   // ---- Shared folder ----
   ipcMain.handle('shared:get', () => shared.sharedState())
@@ -473,6 +495,7 @@ if (!app.requestSingleInstanceLock()) {
     // Connect all modules first: opening the service starts copies, and their
     // progress already updates the screens (which read audio and stage state).
     groups.connectGroups(settings, setupChanged)
+    textStyles.connectTextStyles(settings, () => svc.refreshTextStyles())
     audio.connectAudio(settings, {
       videoPlaying: svc.videoPlaying,
       onChange: () => controlWindow?.webContents.send('audio:changed', audio.audioState()),

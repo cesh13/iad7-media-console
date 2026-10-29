@@ -19,11 +19,15 @@ import type {
   Service,
   ServiceItem,
   ServiceState,
+  ShownTextStyle,
   Target,
-  TextLayer
+  TextLayer,
+  UndoKind
 } from '../shared/types'
 import { bibleDefaults, buildScreens, listBibles } from './bible'
 import { mediaUrl } from './cache'
+import { refreshMedia } from './groups'
+import { shownStyle } from './textStyles'
 import { prepareFile } from './prepare'
 import { saveService } from './serviceStore'
 
@@ -49,6 +53,10 @@ let audioHooks: {
   stopMusic: () => void
   orderEnded: () => void
 } = { playItem: () => {}, stopItem: () => {}, stopMusic: () => {}, orderEnded: () => {} }
+
+/** Earlier versions of the order, for "Undo" (newest last). The items are the same objects, not copies. */
+const undoStack: { kind: UndoKind; items: ServiceItem[] }[] = []
+const undoLimit = 30
 
 /** Hotkey files: prepared items that are not in the order. */
 const extraItems: ServiceItem[] = []
@@ -91,7 +99,8 @@ export function groupsChanged(): void {
   const ids = new Set(getGroups().map((g) => g.id))
   for (const id of [...live.keys()]) if (!ids.has(id)) clearGroups([id], true)
   if (target !== 'all' && !ids.has(target)) target = 'all'
-  changed({ save: false })
+  // A background file may be ready now.
+  refreshTextStyles()
 }
 
 function changed(options: { save?: boolean; outputs?: boolean } = {}): void {
@@ -112,7 +121,7 @@ export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
   if (type === 'slides') return { autoDone: true, autoAdvance: null, loop: false }
   if (type === 'bible') return bibleDefaults()
-  if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1 }
+  if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1, background: null }
   if (type === 'folder') return { autoDone: true }
   if (type === 'audio') return { autoDone: true, volume: 1 }
   if (type === 'countdown')
@@ -127,7 +136,8 @@ export function initService(loaded: Service): void {
     item.settings = { ...defaultSettings(item.type), ...item.settings }
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
-    if (item.type === 'bible' || item.type === 'countdown') continue // No file to copy.
+    if (item.settings.background) refreshMedia(item.settings.background)
+    if (!needsFile(item)) continue
     if (item.type === 'folder') {
       openFolderIndex(item.path)
       if (item.child) restoreItem(item.child)
@@ -135,6 +145,11 @@ export function initService(loaded: Service): void {
     }
     restoreItem(item)
   }
+}
+
+/** Bible, countdown and typed text items have no file to copy. */
+function needsFile(item: ServiceItem): boolean {
+  return item.type !== 'bible' && item.type !== 'countdown' && !!item.path
 }
 
 /** Copy again if the app stopped during a copy, or the cache was cleared. */
@@ -185,7 +200,10 @@ function setStatus(itemId: string, status: ItemStatus): void {
 }
 
 /** The service state without the stage and library parts (index.ts adds them). */
-export function serviceState(): Omit<ServiceState, 'stageTimer' | 'stageMessage' | 'messages' | 'services' | 'library' | 'favorites'> {
+export function serviceState(): Omit<
+  ServiceState,
+  'stageTimer' | 'stageMessage' | 'messages' | 'services' | 'library' | 'favorites' | 'textStyles'
+> {
   refreshFolders()
   const next = nextIndex()
   return {
@@ -195,6 +213,7 @@ export function serviceState(): Omit<ServiceState, 'stageTimer' | 'stageMessage'
     playback: Object.fromEntries(playback),
     nextItemId: next >= 0 ? service.items[next].id : null,
     overlays,
+    undo: undoStack.at(-1)?.kind ?? null,
     logoUrl: logoUrl(),
     bibles: listBibles(),
     bibleHistory: service.bibleHistory ?? []
@@ -228,9 +247,10 @@ export async function addFiles(paths: string[], asFiles = false): Promise<AddFil
   }
 
   const result: AddFilesResult = { added: 0, skipped: [] }
+  if (units.length) saveUndo('add')
   for (const { path, folder } of units) {
     if (folder) {
-      addFolder(path)
+      addFolder(path, false)
       result.added++
       continue
     }
@@ -258,7 +278,8 @@ export async function addFiles(paths: string[], asFiles = false): Promise<AddFil
 }
 
 /** A folder as one item: pick one file from it with a search (SPEC 5.2). */
-export function addFolder(folder: string): void {
+export function addFolder(folder: string, undo = true): void {
+  if (undo) saveUndo('add')
   service.items.push({
     id: randomUUID(),
     type: 'folder',
@@ -332,6 +353,8 @@ export function retryCopy(itemId: string): void {
 }
 
 export function removeItem(itemId: string): void {
+  if (orderIndex(itemId) < 0) return
+  saveUndo('remove')
   clearGroups(groupsShowing(itemId), false, 'both')
   service.items = service.items.filter((i) => i.id !== itemId)
   changed()
@@ -339,7 +362,8 @@ export function removeItem(itemId: string): void {
 
 export function moveItem(itemId: string, toIndex: number): void {
   const from = service.items.findIndex((i) => i.id === itemId)
-  if (from < 0) return
+  if (from < 0 || from === toIndex) return
+  saveUndo('move')
   const [item] = service.items.splice(from, 1)
   service.items.splice(Math.max(0, Math.min(toIndex, service.items.length)), 0, item)
   changed()
@@ -356,11 +380,20 @@ export function setItemStatus(itemId: string, status: ItemStatus): void {
 
 export function updateItem(
   itemId: string,
-  change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
+  change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number; stanzas?: string[] }
 ): void {
   const item = findItem(itemId)
   if (!item) return
   if (change.title?.trim()) item.title = change.title.trim()
+  if (change.stanzas && item.type === 'song') {
+    item.stanzas = cleanStanzas(change.stanzas)
+    // A song that is live shows the new text at once, at the same screen.
+    for (const g of live.values()) {
+      if (g.text?.itemId !== itemId) continue
+      g.text.screens = songScreens(item)
+      g.text.index = Math.min(g.text.index, Math.max(0, g.text.screens.length - 1))
+    }
+  }
   if (change.notes !== undefined) item.notes = change.notes
   if (change.width) item.width = change.width
   if (change.height) item.height = change.height
@@ -380,8 +413,9 @@ export function updateItem(
       g.text.screens = buildScreens(item.bible, item.settings)
       g.text.index = Math.max(0, g.text.screens.findIndex((s) => s.verse === verse))
     }
+    for (const g of live.values()) if (g.text?.itemId === itemId) g.text.style = textStyleOf(itemId)
   }
-  changed({ outputs: !!change.settings })
+  changed({ outputs: !!change.settings || !!change.stanzas })
 }
 
 export function setDuration(itemId: string, seconds: number): void {
@@ -701,6 +735,7 @@ function showCountdown(groupIds: string[], item: ServiceItem): void {
 }
 
 export function addCountdown(): void {
+  saveUndo('add')
   service.items.push({
     id: randomUUID(),
     type: 'countdown',
@@ -729,6 +764,7 @@ function clearAllLive(): void {
 export function switchService(next: Service): void {
   flushSave()
   clearAllLive()
+  undoStack.length = 0
   initService(next)
   // Save at once, so the new service is in the list of services.
   saveService(service)
@@ -747,6 +783,7 @@ export function renameService(name: string): void {
 
 /** Copy items of a past service to the end of this one: all "not done"; folders keep the folder, not the chosen file (SPEC 5.2). */
 export function copyOrder(from: Service): void {
+  if (from.items.length) saveUndo('copy')
   for (const old of from.items) {
     const item: ServiceItem = {
       ...structuredClone(old),
@@ -758,7 +795,7 @@ export function copyOrder(from: Service): void {
     }
     service.items.push(item)
     if (item.type === 'folder') openFolderIndex(item.path)
-    else if (item.type !== 'bible' && item.type !== 'countdown') restoreItem(item)
+    else if (needsFile(item)) restoreItem(item)
   }
   changed()
 }
@@ -891,7 +928,7 @@ function showText(
   const before = liveItemIds()
   const t = ++take
   const index = startVerse ? Math.max(0, screens.findIndex((s) => s.verse >= startVerse)) : 0
-  const text: TextLayer = { itemId, take: t, title, ref, screens, index, settings }
+  const text: TextLayer = { itemId, take: t, title, ref, screens, index, settings, style: textStyleOf(itemId) }
   for (const id of groupIds) {
     const g = groupLive(id)
     live.set(id, { content: settings.mode === 'lower' ? g.content : null, text: { ...text } })
@@ -922,6 +959,7 @@ function stepText(t: number, delta: number): void {
 }
 
 export function addBibleToOrder(ref: BibleRef): void {
+  saveUndo('add')
   service.items.push({
     id: randomUUID(),
     type: 'bible',
@@ -939,6 +977,58 @@ export function addBibleToOrder(ref: BibleRef): void {
 export function showBibleNow(ref: BibleRef, startVerse?: number): void {
   const settings = bibleDefaults()
   showText(targetGroupIds(), null, buildScreens(ref, settings), settings, refLabel(ref), ref, startVerse)
+}
+
+/** Songs and typed text use the song style; Bible passages and messages use the Bible style. */
+function textStyleOf(itemId: string | null): ShownTextStyle {
+  const item = itemId ? findItem(itemId) : undefined
+  return shownStyle(item?.type === 'song' ? 'song' : 'bible', item?.settings)
+}
+
+/** After a text style changes, or a background file is ready: the live text uses the new style. */
+export function refreshTextStyles(): void {
+  for (const g of live.values()) if (g.text) g.text.style = textStyleOf(g.text.itemId)
+  changed({ save: false })
+}
+
+/** Remove empty screens and spaces at the ends; keep the line breaks inside a screen. */
+function cleanStanzas(list: string[]): string[] {
+  return list.map((t) => t.replace(/[ \t]+$/gm, '').trim()).filter(Boolean)
+}
+
+/** A song or text item typed in the app (for example a new chorus or an announcement). */
+export function newTextItem(): string {
+  saveUndo('add')
+  const item: ServiceItem = {
+    id: randomUUID(),
+    type: 'song',
+    title: 'New text',
+    path: '',
+    cache: 'ready',
+    status: 'pending',
+    stanzas: [],
+    settings: defaultSettings('song')
+  }
+  service.items.push(item)
+  changed()
+  return item.id
+}
+
+// ---- Undo ----
+
+function saveUndo(kind: UndoKind): void {
+  undoStack.push({ kind, items: [...service.items] })
+  if (undoStack.length > undoLimit) undoStack.shift()
+}
+
+/** Take back the last add, remove, move or copy. Items that leave the order also go off the screens. */
+export function undo(): void {
+  const last = undoStack.pop()
+  if (!last) return
+  const keep = new Set(last.items.map((i) => i.id))
+  for (const item of service.items) if (!keep.has(item.id)) clearGroups(groupsShowing(item.id), false, 'both')
+  service.items = last.items
+  changed()
 }
 
 /** One screen per stanza. */

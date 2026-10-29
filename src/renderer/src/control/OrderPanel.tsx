@@ -44,6 +44,17 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
       <div className="order-head">
         <h2 className="label">{strings.orderLabel}</h2>
         <div className="button-row tight">
+          <button
+            className="btn btn-small btn-quiet"
+            disabled={!state.undo}
+            title={state.undo ? strings.undoHint(state.undo) : strings.nothingToUndo}
+            onClick={() => void api.undo()}
+          >
+            ↶ {strings.undo}
+          </button>
+          <button className="btn btn-small btn-quiet" title={strings.addTextHint} onClick={() => void api.newTextItem().then(onSelect)}>
+            + {strings.addText}
+          </button>
           <button className="btn btn-small btn-quiet" onClick={() => void api.addCountdown()}>
             + {strings.addCountdown}
           </button>

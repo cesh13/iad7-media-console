@@ -28,6 +28,12 @@ export function ServicePage() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
+      // Ctrl+Z: undo the last change to the order.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        void api.undo()
+        return
+      }
       // The Bible verse list uses ↑ ↓ itself (verse by verse).
       if (target.closest('[data-own-keys]') && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
       // F1–F8: hotkeys, one press = live now.
@@ -227,6 +233,21 @@ function LiveTake({ state, content, groups }: { state: ServiceState; content: Co
             onKeyUp={commitSeek}
           />
           <span className="mono dim">{formatTime(duration || undefined)}</span>
+          <span className="dim">−{formatTime(Math.max(0, duration - (dragTime ?? time ?? 0)))}</span>
+          {item && (
+            <label className="live-volume" title={strings.volume}>
+              🔊
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={item.settings.volume ?? 1}
+                onChange={(e) => void api.updateItem(item.id, { settings: { volume: Number(e.target.value) } })}
+              />
+              <span className="mono">{Math.round((item.settings.volume ?? 1) * 100)}%</span>
+            </label>
+          )}
         </div>
       )}
     </div>

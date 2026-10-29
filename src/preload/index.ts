@@ -51,6 +51,12 @@ const api: MediaConsoleApi = {
   moveItem: (id, toIndex) => invoke('service:moveItem', id, toIndex),
   setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
   updateItem: (id, change) => invoke('service:updateItem', id, change),
+  newTextItem: () => invoke('service:newTextItem'),
+  pickItemBackground: (id) => invoke('service:pickItemBackground', id),
+  undo: () => invoke('service:undo'),
+  setTextStyle: (kind, change) => invoke('textStyles:set', kind, change),
+  pickTextBackground: (kind) => invoke('textStyles:pickBackground', kind),
+  resetTextStyle: (kind) => invoke('textStyles:reset', kind),
 
   // Services
   newService: () => invoke('services:new'),

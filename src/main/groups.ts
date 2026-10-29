@@ -23,6 +23,11 @@ function changed(): void {
   notify()
 }
 
+/** Make sure the cached copy of a saved file (a text background) still exists. */
+export function refreshMedia(m: MediaRef): void {
+  ensureCached(m)
+}
+
 function ensureCached(m: MediaRef): void {
   if (m.cachedPath && existsSync(m.cachedPath)) {
     m.url = mediaUrl(m.cachedPath)

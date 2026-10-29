@@ -74,6 +74,47 @@ export interface Settings {
   /** Library root folders (Himnario, Videos, Fondos, …). */
   library?: LibraryFolder[]
   favorites?: Favorite[]
+  /** How Bible text and song text look on the screens. */
+  textStyles?: TextStyles
+}
+
+// ---- Text styles (Bible, songs) ----
+
+/**
+ * What is behind full-screen text:
+ * - idle: the idle background of the group (picture or video), if it has one
+ * - black: black
+ * - color: one color
+ * - media: a picture or a video (in a loop)
+ */
+export type TextBackground = 'idle' | 'black' | 'color' | 'media'
+
+export interface TextStyle {
+  font: 'serif' | 'sans'
+  /** Largest text size in % of the normal size (the text is made smaller when it does not fit). */
+  size: number
+  /** Text color, for example "#ffffff". */
+  color: string
+  align: 'center' | 'left'
+  /** A soft shadow behind the letters, so they are easy to read over pictures. */
+  shadow: boolean
+  uppercase: boolean
+  background: TextBackground
+  backgroundColor: string
+  backgroundMedia?: MediaRef
+  /** Darken the background picture or video: 0 (not darker) to 0.9. */
+  dim: number
+}
+
+/** Bible: Bible passages and lower-third messages. Song: songs and typed text (announcements). */
+export type TextStyleKind = 'bible' | 'song'
+
+export type TextStyles = Record<TextStyleKind, TextStyle>
+
+/** The style that a text layer uses now: the saved style, with the item's own background if it has one. */
+export interface ShownTextStyle extends TextStyle {
+  /** media:// URL and type of the background picture or video. */
+  media?: { type: 'image' | 'video'; url: string }
 }
 
 // ---- Library (SPEC 5.2) and hotkeys (SPEC 5.6) ----
@@ -274,6 +315,9 @@ export interface ItemSettings {
   /** At 0:00: go to the next item, show the logo, or stay at 0:00. */
   atZero?: 'next' | 'logo' | 'stay'
   showOnStage?: boolean
+  // Song and Bible text
+  /** A background picture or video only for this item (instead of the style background). */
+  background?: MediaRef | null
 }
 
 // ---- Bible ----
@@ -468,6 +512,8 @@ export interface TextLayer {
   /** The screen shown now. */
   index: number
   settings: ItemSettings
+  /** How the text looks (font, color, background). */
+  style?: ShownTextStyle
 }
 
 /** What a group shows now, by layer (SPEC section 4). More layers come later. */
@@ -500,6 +546,9 @@ export interface GroupView {
   stage?: StageRender
 }
 
+/** Changes to the order that "Undo" can take back. */
+export type UndoKind = 'add' | 'remove' | 'move' | 'copy'
+
 /** Everything the control window shows about the service. */
 export interface ServiceState {
   service: Service
@@ -520,6 +569,9 @@ export interface ServiceState {
   library: LibraryFolder[]
   favorites: Favorite[]
   logoUrl?: string
+  textStyles: TextStyles
+  /** The change that "Undo" takes back, or null when there is nothing to undo. */
+  undo: UndoKind | null
 }
 
 export interface AddFilesResult {
@@ -588,8 +640,20 @@ export interface MediaConsoleApi {
   setItemStatus(itemId: string, status: ItemStatus): Promise<void>
   updateItem(
     itemId: string,
-    change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
+    change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number; stanzas?: string[] }
   ): Promise<void>
+  /** Add a song or text item that is typed in the app (not from a file). Returns its id. */
+  newTextItem(): Promise<string>
+  /** Show a file dialog and choose a background picture or video for one song or Bible item. */
+  pickItemBackground(itemId: string): Promise<void>
+  /** Undo the last change to the order (add, remove, move, copy). */
+  undo(): Promise<void>
+
+  // Text styles
+  setTextStyle(kind: TextStyleKind, change: Partial<Omit<TextStyle, 'backgroundMedia'>>): Promise<void>
+  /** Show a file dialog and choose the background picture or video of a text style. */
+  pickTextBackground(kind: TextStyleKind): Promise<void>
+  resetTextStyle(kind: TextStyleKind): Promise<void>
 
   // Shared folder
   getShared(): Promise<SharedState>

@@ -29,7 +29,10 @@ npm run dev
    are not in the catalog: import them from a file (Zefania XML, OSIS XML, JSON or text).
 5. **PowerPoint**: install LibreOffice, so .pptx files can be converted to pictures.
    Without it, save presentations as PDF.
-6. Optional: watch the shared folder (for example `\\MEDIA-PC\Compartida`),
+6. **Text style**: in the Bible panel (or the preview of a song) click **Text style…**.
+   Choose the font, size, color and background for Bible text and for songs/typed text.
+   A song or Bible item can also have its own background picture or video.
+7. Optional: watch the shared folder (for example `\\MEDIA-PC\Compartida`),
    add library folders (Library tab), and set hotkeys F1–F8 in Library › ★ Favorites.
 
 ## Keys in the Service tab
@@ -42,6 +45,11 @@ npm run dev
 | Enter | Selected item goes live |
 | Esc | Clear the screens of the target |
 | F1–F8 | Hotkeys |
+| Ctrl+Z | Undo the last change to the order (add, remove, move, copy) |
+
+**+ Text** in the order adds a song, chorus or announcement that you type in the
+app. An empty line starts a new screen. The text of a .txt song can be changed in
+the preview too (only in this service, not in the file).
 
 ## Where the data is
 

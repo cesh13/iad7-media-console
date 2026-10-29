@@ -1,4 +1,4 @@
-import type { EndAction, IdleKind, ImageFit, ItemType, ServiceItem } from '../../shared/types'
+import type { EndAction, IdleKind, ImageFit, ItemType, ServiceItem, TextBackground, TextStyleKind, UndoKind } from '../../shared/types'
 
 // All UI text lives here, so it can be translated later.
 
@@ -252,7 +252,62 @@ export const strings = {
   modeLower: 'Lower third (over video)',
   secondVersion: 'Second version',
   none: 'None',
-  songTitle: 'Song title on screen',
+  songTitle: 'Title on screen',
+
+  // Typed text (songs, announcements)
+  addText: 'Text',
+  addTextHint: 'Type a song, a chorus or an announcement',
+  noTextYet: 'no text yet',
+  editText: 'Edit text',
+  saveText: 'Save text',
+  cancel: 'Cancel',
+  songTextPlaceholder:
+    'Type the text here.\n\nAn empty line starts a new screen.\nA line break stays a line break on the screen.',
+  songTextHelp: 'An empty line starts a new screen. Ctrl+Enter saves.',
+  songFileEditNote: 'This changes the text only in this service, not in the file. An empty line starts a new screen.',
+  itemBackground: 'Background for this item',
+  useStyleBackground: 'Same as the text style',
+  chooseFile: 'Choose…',
+  textStyleButton: 'Text style…',
+
+  // Undo
+  undo: 'Undo',
+  undoHint: (kind: UndoKind) => `Undo: ${undoKinds[kind]} (Ctrl+Z)`,
+  nothingToUndo: 'Nothing to undo',
+
+  // Text style window
+  textStyleTitle: 'Text style',
+  styleKinds: { bible: 'Bible', song: 'Songs and text' } as Record<TextStyleKind, string>,
+  styleKindHelp: {
+    bible: 'For Bible passages and lower-third messages.',
+    song: 'For songs, hymns (.txt) and typed text such as announcements.'
+  } as Record<TextStyleKind, string>,
+  styleSamples: {
+    bible: {
+      text: 'Porque de tal manera amó Dios al mundo, que ha dado á su Hijo unigénito.',
+      ref: 'Juan 3:16 · RV1909'
+    },
+    song: { text: '¡Santo! ¡Santo! ¡Santo!\nSeñor omnipotente,\nsiempre el labio mío\nloores te dará.', ref: 'Santo, Santo, Santo' }
+  } as Record<TextStyleKind, { text: string; ref: string }>,
+  styleFont: 'Font',
+  styleFonts: { serif: 'Serif (book)', sans: 'Sans (clean)' } as Record<'serif' | 'sans', string>,
+  styleSize: 'Largest text size',
+  styleSizeHelp: 'Long text is made smaller, so it always fits on the screen.',
+  styleColor: 'Text color',
+  styleAlign: 'Text',
+  styleAligns: { center: 'Centered', left: 'Left' } as Record<'center' | 'left', string>,
+  styleShadow: 'Shadow behind the letters',
+  styleUppercase: 'CAPITAL LETTERS',
+  styleBackground: 'Background (full screen)',
+  styleBackgrounds: { idle: 'Idle background', black: 'Black', color: 'Color', media: 'Picture or video' } as Record<
+    TextBackground,
+    string
+  >,
+  styleIdleHelp: 'The picture or video of the group\'s idle screen (Screens › Groups). Black if the group has none.',
+  styleDim: 'Darker',
+  styleLiveNote: 'Changes are saved and show on the screens at once.',
+  styleReset: 'Reset to default',
+  done: 'Done',
   licenseNote: 'For bilingual services. Each version needs its own license, or must be public domain.',
 
   // Stage screen and tabs
@@ -375,6 +430,13 @@ export const strings = {
   idleInterval: 'Seconds per image',
   idleNeedsLogo: 'Choose a church logo above, or the screen stays black.',
   idleNeedsFiles: 'Choose files, or the screen stays black.'
+}
+
+const undoKinds: Record<UndoKind, string> = {
+  add: 'add to the order',
+  remove: 'remove from the order',
+  move: 'move in the order',
+  copy: 'copy from a past service'
 }
 
 export function formatTime(seconds: number | undefined): string {

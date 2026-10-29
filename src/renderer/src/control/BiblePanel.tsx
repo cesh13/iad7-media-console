@@ -4,6 +4,7 @@ import { bookCategories, bookName, books, refLabel } from '../../../shared/bible
 import type { BibleHit, BibleRef, ServiceState, TextLayer } from '../../../shared/types'
 import { strings } from '../strings'
 import { BibleCatalog } from './BibleCatalog'
+import { TextStyleDialog } from './TextStyleDialog'
 
 const api = window.mediaConsole
 
@@ -27,7 +28,13 @@ export function BiblePanel({ state }: { state: ServiceState }) {
   const [hits, setHits] = useState<{ list: BibleHit[]; more: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [catalogOpen, setCatalogOpen] = useState(false)
-  const catalog = catalogOpen && <BibleCatalog installed={bibles} onClose={() => setCatalogOpen(false)} />
+  const [styleOpen, setStyleOpen] = useState(false)
+  const catalog = (
+    <>
+      {catalogOpen && <BibleCatalog installed={bibles} onClose={() => setCatalogOpen(false)} />}
+      {styleOpen && <TextStyleDialog state={state} kind="bible" onClose={() => setStyleOpen(false)} />}
+    </>
+  )
   const typed = useRef({ text: '', at: 0 })
 
   useEffect(() => {
@@ -194,6 +201,9 @@ export function BiblePanel({ state }: { state: ServiceState }) {
             </option>
           ))}
         </select>
+        <button className="btn btn-small btn-quiet" onClick={() => setStyleOpen(true)}>
+          {strings.textStyleButton}
+        </button>
         <button className="btn btn-small btn-quiet" title={strings.downloadVersionHint} onClick={() => setCatalogOpen(true)}>
           {strings.downloadShort}
         </button>
