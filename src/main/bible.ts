@@ -41,9 +41,12 @@ function saveIndex(): void {
   writeFileSync(indexFile(), JSON.stringify(listBibles()), 'utf8')
 }
 
-export async function importBible(path: string): Promise<BibleVersion> {
-  const data = await readBibleFile(path)
-  const id = `${data.abbrev.replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'bible'}-${createHash('sha1').update(path).digest('hex').slice(0, 6)}`
+/** Import a Bible file. A download gives its own id, name and short name. */
+export async function importBible(path: string, given?: { id: string; name: string; abbrev: string }): Promise<BibleVersion> {
+  const read = await readBibleFile(path)
+  const data = given ? { ...read, name: given.name, abbrev: given.abbrev } : read
+  const id =
+    given?.id ?? `${data.abbrev.replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'bible'}-${createHash('sha1').update(path).digest('hex').slice(0, 6)}`
   writeFileSync(join(dir(), `${id}.json`), JSON.stringify({ ...data, id }), 'utf8')
   const version: BibleVersion = {
     id,

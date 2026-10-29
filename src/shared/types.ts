@@ -315,6 +315,22 @@ export interface BibleHit {
   text: string
 }
 
+/** A version in the online catalog (getbible.net). */
+export interface BibleCatalogEntry {
+  /** Catalog id, for example "valera". */
+  id: string
+  name: string
+  /** Short name in the version selector, for example "RV1909". */
+  abbrev: string
+  /** Language code ("es") and name ("Spanish"). */
+  lang: string
+  language: string
+  /** License text from the catalog, for example "Public Domain". */
+  license: string
+  about: string
+  installed: boolean
+}
+
 export type BibleSearchResult =
   | { kind: 'ref'; book: number; chapter?: number; from?: number; to?: number }
   | { kind: 'words'; hits: BibleHit[]; more: boolean }
@@ -648,6 +664,11 @@ export interface MediaConsoleApi {
   /** Import a Bible file dropped on the Bible panel. Returns an error text, or null. */
   importBibleFrom(path: string): Promise<string | null>
   removeBible(bibleId: string): Promise<void>
+  /** The online list of versions to download (saved for one day; `refresh` asks the server again). */
+  bibleCatalog(refresh?: boolean): Promise<{ entries: BibleCatalogEntry[]; error?: string }>
+  /** Download a version from the catalog and add it. Returns an error text, or null. */
+  downloadBible(catalogId: string): Promise<string | null>
+  onBibleDownload(callback: (p: { id: string; fraction: number }) => void): () => void
   getChapter(bibleId: string, book: number, chapter: number): Promise<string[]>
   searchBible(bibleId: string, query: string): Promise<BibleSearchResult>
   addBibleToOrder(ref: BibleRef): Promise<void>

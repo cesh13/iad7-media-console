@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from
 import { bookCategories, bookName, books, refLabel } from '../../../shared/bibleBooks'
 import type { BibleHit, BibleRef, ServiceState, TextLayer } from '../../../shared/types'
 import { strings } from '../strings'
+import { BibleCatalog } from './BibleCatalog'
 
 const api = window.mediaConsole
 
@@ -25,6 +26,8 @@ export function BiblePanel({ state }: { state: ServiceState }) {
   const [verses, setVerses] = useState<string[]>([])
   const [hits, setHits] = useState<{ list: BibleHit[]; more: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [catalogOpen, setCatalogOpen] = useState(false)
+  const catalog = catalogOpen && <BibleCatalog installed={bibles} onClose={() => setCatalogOpen(false)} />
   const typed = useRef({ text: '', at: 0 })
 
   useEffect(() => {
@@ -154,11 +157,15 @@ export function BiblePanel({ state }: { state: ServiceState }) {
         </div>
         <p className="help">{strings.noBible}</p>
         <div className="button-row">
-          <button className="btn btn-primary" onClick={() => void doImport()}>
+          <button className="btn btn-primary" onClick={() => setCatalogOpen(true)}>
+            {strings.downloadVersion}
+          </button>
+          <button className="btn" onClick={() => void doImport()}>
             {strings.importBible}
           </button>
         </div>
         {error && <p className="text-live">{error}</p>}
+        {catalog}
       </section>
     )
   }
@@ -187,6 +194,9 @@ export function BiblePanel({ state }: { state: ServiceState }) {
             </option>
           ))}
         </select>
+        <button className="btn btn-small btn-quiet" title={strings.downloadVersionHint} onClick={() => setCatalogOpen(true)}>
+          {strings.downloadShort}
+        </button>
         <button className="btn btn-small btn-quiet" title={strings.importBibleHint} onClick={() => void doImport()}>
           {strings.importShort}
         </button>
@@ -198,6 +208,7 @@ export function BiblePanel({ state }: { state: ServiceState }) {
         </button>
       </div>
       {error && <p className="text-live small">{error}</p>}
+      {catalog}
 
       <div className="bible-loc">
         <button className="btn btn-icon" aria-label={strings.prevChapter} onClick={() => goChapter(-1)}>

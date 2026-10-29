@@ -196,7 +196,26 @@ export const strings = {
   // Bible panel
   bibleLabel: 'Bible',
   noBible:
-    'No Bible version yet. Import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text. Use only public-domain versions (for example RV1909) or versions the church has a license for.',
+    'No Bible version yet. Download a free version (for example Reina Valera 1909), or import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text.',
+  downloadVersion: 'Download a version…',
+  downloadShort: 'Download…',
+  downloadVersionHint: 'Download more Bible versions from the free online catalog',
+  downloadVersions: 'Download Bible versions',
+  catalogHelp:
+    'Free versions from the getbible.net catalog (texts from the CrossWire Bible Society). After the download, the version works without internet. Versions like RVR1960, NVI or NTV are not here: they need a license; import those from a file.',
+  catalogSearch: 'Search by name, for example "Reina Valera"',
+  allLanguages: 'All languages',
+  refreshCatalog: 'Get the list again from the internet',
+  catalogLoading: 'Loading the list of versions…',
+  catalogNone: 'No versions found.',
+  catalogOffline: (err: string) => `The list could not be loaded. Check the internet connection. (${err})`,
+  catalogOldList: (err: string) => `No internet: this is the list from the last time. (${err})`,
+  download: 'Download',
+  downloading: 'downloading…',
+  installed: 'Installed ✓',
+  versionsOnThisComputer: 'Versions on this computer',
+  licenseReminder:
+    'The license of each version is shown in the list. "Copyrighted; permission to distribute granted to CrossWire" means the owner allows CrossWire to share it; check that showing it in church is allowed.',
   importBible: 'Import a Bible file…',
   importShort: 'Import…',
   importBibleHint: 'Import another Bible version from a file',

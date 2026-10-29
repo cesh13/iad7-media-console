@@ -15,6 +15,7 @@ import type {
 } from '../shared/types'
 import * as audio from './audio'
 import * as bible from './bible'
+import { bibleCatalog, downloadBible } from './bibleCatalog'
 import { listScreens, matchOutputs } from './displays'
 import * as groups from './groups'
 import {
@@ -356,6 +357,16 @@ function registerIpc(): void {
     return path ? importBibleFile(path) : null
   })
   ipcMain.handle('bible:importFrom', (_e, path: string) => importBibleFile(path))
+  ipcMain.handle('bible:catalog', (_e, refresh?: boolean) => bibleCatalog(refresh))
+  ipcMain.handle('bible:download', async (_e, id: string) => {
+    try {
+      await downloadBible(id, (fraction) => controlWindow?.webContents.send('bible:downloadProgress', { id, fraction }))
+      sendServiceState()
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err)
+    }
+  })
   ipcMain.handle('bible:remove', (_e, id: string) => {
     bible.removeBible(id)
     sendServiceState()

@@ -23,8 +23,10 @@ npm run dev
 3. In **Groups**: put the projector in **Main** and the participant monitor in
    **Stage** (Stage shows the stage view: clock, countdown, now, next, notes).
    Choose the church logo and what each group shows when nothing is live.
-4. **Bible**: import a Bible file (Zefania XML, OSIS XML, JSON or text).
-   Use only public-domain versions (RV1909) or versions the church has a license for.
+4. **Bible**: click **Download a version…** and download Reina Valera 1909 (or
+   other free versions) from the online catalog (getbible.net). This needs internet
+   once; after that it works offline. Versions that need a license (RVR1960, NVI, NTV)
+   are not in the catalog: import them from a file (Zefania XML, OSIS XML, JSON or text).
 5. **PowerPoint**: install LibreOffice, so .pptx files can be converted to pictures.
    Without it, save presentations as PDF.
 6. Optional: watch the shared folder (for example `\\MEDIA-PC\Compartida`),
