@@ -65,6 +65,7 @@ export function ScreensPage() {
               screen={s}
               output={state.outputs.find((o) => o.screen?.electronId === s.electronId) ?? null}
               testOpen={state.testOpen.includes(s.electronId)}
+              isConsole={state.consoleScreen === s.electronId}
               onState={setState}
             />
           ))}
@@ -114,9 +115,10 @@ function ScreenCard(props: {
   screen: ScreenInfo
   output: OutputStatus | null
   testOpen: boolean
+  isConsole: boolean
   onState: (s: ScreensState) => void
 }) {
-  const { index, screen: s, output, testOpen, onState } = props
+  const { index, screen: s, output, testOpen, isConsole, onState } = props
   const savedName = output?.output.name ?? ''
   const [name, setName] = useState(savedName)
   useEffect(() => setName(savedName), [savedName])
@@ -130,6 +132,7 @@ function ScreenCard(props: {
         <div className="screen-title">
           {s.label}
           {s.isPrimary && <span className="badge">{strings.primary}</span>}
+          {isConsole && <span className="badge">{strings.consoleScreen}</span>}
           {testOpen && <span className="badge badge-preview">{strings.testOpen}</span>}
         </div>
         <div className="mono dim">
@@ -138,6 +141,8 @@ function ScreenCard(props: {
         {output && output.output.displayKey !== s.displayKey && (
           <div className="mono warn">{strings.savedKey(output.output.displayKey)}</div>
         )}
+        {isConsole && output && <div className="warn">{strings.consoleOutputWarn}</div>}
+        {isConsole && !output && <div className="dim small">{strings.consoleNameWarn}</div>}
       </div>
       <form
         className="screen-form"

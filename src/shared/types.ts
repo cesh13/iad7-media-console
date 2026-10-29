@@ -239,6 +239,8 @@ export interface ScreensState {
   testOpen: number[]
   groups: GroupConfig[]
   logo?: MediaRef
+  /** Electron id of the screen that shows the control window. No output window opens there. */
+  consoleScreen: number | null
 }
 
 /** Data the main process sends to a test window. */

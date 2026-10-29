@@ -5,6 +5,7 @@ import type {
   GroupConfig,
   ItemSettings,
   ItemStatus,
+  OutputStatus,
   Overlays,
   PlaybackInfo,
   ScreensState,
@@ -58,6 +59,24 @@ const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
 
 registerMediaScheme()
 
+/** Electron id of the screen that shows most of the control window. */
+function consoleScreenId(): number | null {
+  if (!controlWindow || controlWindow.isDestroyed()) return null
+  return screen.getDisplayMatching(controlWindow.getBounds()).id
+}
+
+/**
+ * The saved outputs that get a window now. An output on the console screen
+ * gets no window: a fullscreen window that is always on top would cover the
+ * control window, and then nobody can use the app.
+ */
+function openableOutputs(): OutputStatus[] {
+  const consoleId = consoleScreenId()
+  return matchOutputs(settings.outputs, listScreens()).map((s) =>
+    s.screen && s.screen.electronId === consoleId ? { ...s, screen: null } : s
+  )
+}
+
 function screensState(): ScreensState {
   const screens = listScreens()
   return {
@@ -65,7 +84,8 @@ function screensState(): ScreensState {
     outputs: matchOutputs(settings.outputs, screens),
     testOpen: openTestIds(),
     groups: settings.groups,
-    logo: settings.logo
+    logo: settings.logo,
+    consoleScreen: consoleScreenId()
   }
 }
 
@@ -94,13 +114,13 @@ function sendServiceState(): void {
 }
 
 function renderOutputs(): void {
-  const ids = openOutputIds(matchOutputs(settings.outputs, listScreens()))
+  const ids = openOutputIds(openableOutputs())
   for (const [id, render] of outputRenders(settings, ids)) sendRender(id, render)
 }
 
 /** Open, move or close output windows to match the saved outputs and the connected screens. */
 function syncOutputs(): void {
-  syncOutputWindows(matchOutputs(settings.outputs, listScreens()), () => renderOutputs())
+  syncOutputWindows(openableOutputs(), () => renderOutputs())
   renderOutputs()
 }
 
@@ -128,6 +148,19 @@ function createControlWindow(): void {
     controlWindow?.maximize()
     controlWindow?.show()
   })
+  // If the control window moves to another screen, the output there closes
+  // and the output on the old console screen opens.
+  let lastScreen: number | null = null
+  const moved = (): void => {
+    const id = consoleScreenId()
+    if (id === lastScreen) return
+    lastScreen = id
+    syncOutputs()
+    sendScreensState()
+  }
+  controlWindow.on('moved', moved)
+  controlWindow.on('maximize', moved)
+  controlWindow.on('show', moved)
   // Closing the control window ends the app, and with it all screen windows.
   controlWindow.on('closed', () => {
     controlWindow = null

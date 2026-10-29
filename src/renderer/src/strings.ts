@@ -23,6 +23,10 @@ export const strings = {
   namePlaceholder: 'Output name, e.g. Projector',
   notOutput: 'Not an output',
   primary: 'Primary',
+  consoleScreen: 'This app',
+  consoleOutputWarn:
+    'This is the screen of this control window, so this output does not open. Move this window to another screen, or name a different screen.',
+  consoleNameWarn: 'This screen shows this control window. An output here would cover it.',
   scale: (f: number) => `scale ${Math.round(f * 100)}%`,
   position: (x: number, y: number) => `at ${x}, ${y}`,
   savedKey: (key: string) => `Saved as: ${key}`,
