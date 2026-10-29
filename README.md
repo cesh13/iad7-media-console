@@ -44,6 +44,7 @@ npm run dev
 | ← → | Previous / next slide, Bible screen or song stanza |
 | ↑ ↓ | Select an item in the order (in the Bible verse list: verse by verse) |
 | Enter | Selected item goes live |
+| Delete | Remove the selected item from the order (also the × on the row) |
 | Esc | Clear the screens of the target |
 | F1–F8 | Hotkeys |
 | Ctrl+Z | Undo the last change to the order (add, remove, move, copy) |

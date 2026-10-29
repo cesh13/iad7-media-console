@@ -20,6 +20,7 @@ export const strings = {
   testOpen: 'Test open',
   save: 'Save',
   remove: 'Remove',
+  removeFromOrder: 'Remove from the order (Delete). Ctrl+Z brings it back.',
   namePlaceholder: 'Output name, e.g. Projector',
   notOutput: 'Not an output',
   primary: 'Primary',

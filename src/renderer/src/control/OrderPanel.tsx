@@ -193,6 +193,21 @@ function OrderRow(props: {
         {item.type === 'countdown' &&
           (item.settings.countdownMode === 'until' ? `→ ${item.settings.untilTime || '--:--'}` : formatTime(item.settings.countdownSeconds))}
         </span>
+        {/* No quick remove for the live item: removing it clears the screens. */}
+        {item.status !== 'live' && (
+          <button
+            className="row-remove"
+            title={strings.removeFromOrder}
+            aria-label={strings.removeFromOrder}
+            onClick={(e) => {
+              e.stopPropagation()
+              void api.removeItem(item.id)
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            ×
+          </button>
+        )}
       </div>
       {item.type === 'folder' && selected && <FolderBox item={item} />}
     </>

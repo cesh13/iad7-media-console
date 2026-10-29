@@ -337,6 +337,29 @@
 .row:hover {
   background: var(--bg-card);
 }
+/* The × to remove an item: shown when the pointer is on the row, or the row is selected. */
+.row-remove {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  visibility: hidden;
+}
+.row:hover .row-remove,
+.row.is-selected .row-remove {
+  visibility: visible;
+}
+.row-remove:hover {
+  background: var(--bg-button);
+  color: var(--live);
+}
 .row.is-selected {
   background: var(--bg-card);
   border-color: var(--border-control);

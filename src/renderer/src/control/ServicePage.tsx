@@ -60,6 +60,14 @@ export function ServicePage() {
       } else if (e.key === 'Enter' && selectedId) {
         e.preventDefault()
         void api.goLive(selectedId)
+      } else if (e.key === 'Delete' && selectedId) {
+        // Delete removes the selected item (Ctrl+Z brings it back). Not the live item.
+        const index = items.findIndex((i) => i.id === selectedId)
+        if (index < 0 || items[index].status === 'live') return
+        e.preventDefault()
+        void api.removeItem(selectedId)
+        const nextItem = items[index + 1] ?? items[index - 1]
+        if (nextItem) setSelectedId(nextItem.id)
       }
     }
     window.addEventListener('keydown', onKey)
