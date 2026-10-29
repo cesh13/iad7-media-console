@@ -337,6 +337,13 @@
 .row:hover {
   background: var(--bg-card);
 }
+.row-chevron {
+  flex: none;
+  width: 10px;
+  margin-left: -6px;
+  color: var(--text-2);
+  font-size: 11px;
+}
 /* The × to remove an item: shown when the pointer is on the row, or the row is selected. */
 .row-remove {
   flex: none;

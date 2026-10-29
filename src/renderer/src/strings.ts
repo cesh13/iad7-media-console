@@ -20,6 +20,8 @@ export const strings = {
   testOpen: 'Test open',
   save: 'Save',
   remove: 'Remove',
+  folderOpen: 'Click to show the files',
+  folderClose: 'Click to hide the files',
   removeFromOrder: 'Remove from the order (Delete). Ctrl+Z brings it back.',
   namePlaceholder: 'Output name, e.g. Projector',
   notOutput: 'Not an output',

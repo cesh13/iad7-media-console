@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import type { ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { FolderBox } from './FolderBox'
@@ -143,6 +143,20 @@ function OrderRow(props: {
 }) {
   const { item, index, isNext, selected, onSelect } = props
   const [dragOver, setDragOver] = useState(false)
+  // A selected folder shows its file list. A click on the selected folder
+  // row closes or opens the list. Choosing a file closes it.
+  const isFolder = item.type === 'folder'
+  const [open, setOpen] = useState(true)
+  useEffect(() => {
+    if (selected) setOpen(true)
+  }, [selected])
+  const chosen = item.child?.path
+  const lastChosen = useRef(chosen)
+  useEffect(() => {
+    if (chosen && chosen !== lastChosen.current) setOpen(false)
+    lastChosen.current = chosen
+  }, [chosen])
+  const expanded = isFolder && selected && open
 
   const classes = ['row', `is-${item.status}`]
   if (isNext && item.status !== 'live') classes.push('is-next')
@@ -154,7 +168,7 @@ function OrderRow(props: {
       <div
         className={classes.join(' ')}
         draggable
-        onClick={onSelect}
+        onClick={() => (isFolder && selected ? setOpen(!open) : onSelect())}
         onDoubleClick={() => void api.goLive(item.id)}
         onDragStart={(e) => e.dataTransfer.setData(itemDragType, item.id)}
         onDragOver={(e) => {
@@ -174,6 +188,11 @@ function OrderRow(props: {
       >
         <StatusMark item={item} isNext={isNext} />
         <TypeIcon type={item.type} />
+        {isFolder && (
+          <span className="row-chevron" title={expanded ? strings.folderClose : strings.folderOpen}>
+            {expanded ? '▾' : '▸'}
+          </span>
+        )}
         <span className="row-title">
           {item.title}
           {item.child && <span className="row-choice"> › {item.child.title}</span>}
@@ -209,7 +228,7 @@ function OrderRow(props: {
           </button>
         )}
       </div>
-      {item.type === 'folder' && selected && <FolderBox item={item} />}
+      {expanded && <FolderBox item={item} />}
     </>
   )
 }
