@@ -104,7 +104,8 @@ interface Service {
 See `docs/design/Main.dc.html`. Dark theme (dim room).
 
 ### 5.1 Top bar
-- App name, service selector, source folder path, clock and elapsed time.
+- Left: Service / Screens tabs. Center: app name. Right: clock and elapsed
+  time, the "No output screen" chip when it applies, and the buttons.
 - Buttons: **Logo**, **Clear text**, **Black screen (all)**.
 
 ### 5.2 Left panel: Order / Library / Bible tabs
@@ -166,6 +167,9 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Layer clear buttons per group (Background, Text, Audio).
 - Stage card shows: now, next, clock, notes.
 - New screens appear at the bottom with "add to a group".
+- When no output screen is connected, a yellow box at the top says "Nothing
+  goes to a screen", tells why (none set up, or none connected) and has a button
+  to open the Screens tab. The top bar also shows a "No output screen" chip.
 - "Edit groups" opens the group settings (screens per group, idle screen).
 
 ### 5.5 Bible tab
@@ -197,7 +201,8 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 
 ### 5.6 Bottom: Hotkeys + Audio / Message / Stage tabs
 - **One slim bar (about 44 px), always visible.** From left to right:
-  hotkeys, music summary, and the Audio / Message / Stage buttons.
+  the loaded service (selector, rename ✎, + New), hotkeys, music summary,
+  and the Audio / Message / Stage buttons.
 - A button opens its **drawer** above the bar (max 300 px, closed by default).
   A second click closes it. The drawer pushes the content up; it never covers
   the Live panel or the preview. Esc does not close it (Esc clears the screens).

@@ -2,14 +2,14 @@ import { useState } from 'react'
 import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
 import { AudioTab, MusicStrip } from './AudioTab'
-import { HotkeysBar } from './ServiceBar'
+import { HotkeysBar, ServiceBar } from './ServiceBar'
 import { MessageTab, StageTab, messageIsLive } from './StageTab'
 
 type Tab = 'audio' | 'message' | 'stage'
 
 /**
- * Bottom strip (SPEC 5.6): one slim bar with hotkeys, a music summary and the
- * Audio / Message / Stage buttons. A button opens its drawer above the bar;
+ * Bottom strip (SPEC 5.6): one slim bar with the loaded service, hotkeys, a
+ * music summary and the Audio / Message / Stage buttons. A button opens its drawer above the bar;
  * a second click closes it. The drawer pushes the content up, it never covers it.
  */
 export function QuickPanel({ state, onEditHotkeys }: { state: ServiceState; onEditHotkeys: () => void }) {
@@ -30,6 +30,7 @@ export function QuickPanel({ state, onEditHotkeys }: { state: ServiceState; onEd
         </div>
       )}
       <div className="quick-bar">
+        <ServiceBar state={state} />
         <HotkeysBar state={state} onEdit={onEditHotkeys} />
         <MusicStrip />
         <nav className="quick-tabs">

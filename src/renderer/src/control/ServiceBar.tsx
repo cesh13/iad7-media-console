@@ -5,13 +5,25 @@ import { formatClock, formatCountdown, useNow } from '../view/clock'
 
 const api = window.mediaConsole
 
-/** Top bar (SPEC 5.1): service selector, clock, and time since the service started. */
-export function ServiceBar({ state }: { state: ServiceState }) {
+/** Top bar (SPEC 5.1): clock, and time since the service started. */
+export function ServiceClock({ state }: { state: ServiceState }) {
   const now = useNow(1000)
+  const started = state.service.startedAt
+  return (
+    <div className="service-clock">
+      <span className="mono clock">{formatClock(now)}</span>
+      <span className="mono dim elapsed" title={strings.elapsedHint}>
+        {started ? formatCountdown(-(now - started) / 1000).replace('+', '') : '0:00'}
+      </span>
+    </div>
+  )
+}
+
+/** Bottom bar (SPEC 5.6): the loaded service, with rename and "+ New". */
+export function ServiceBar({ state }: { state: ServiceState }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(state.service.name)
   useEffect(() => setName(state.service.name), [state.service.name])
-  const started = state.service.startedAt
 
   const save = () => {
     setEditing(false)
@@ -56,10 +68,6 @@ export function ServiceBar({ state }: { state: ServiceState }) {
       <button className="btn btn-small btn-quiet" onClick={() => void api.newService()}>
         + {strings.newService}
       </button>
-      <span className="mono clock">{formatClock(now)}</span>
-      <span className="mono dim elapsed" title={strings.elapsedHint}>
-        {started ? formatCountdown(-(now - started) / 1000).replace('+', '') : '0:00'}
-      </span>
     </div>
   )
 }

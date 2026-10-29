@@ -4,8 +4,11 @@
   height: 100%;
 }
 
+/* Three columns: tabs, app name in the middle, clock and buttons. The two
+   side columns are the same width, so the name stays in the center. */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 20px;
   padding: 10px 16px;
@@ -660,8 +663,9 @@
 
 /* ---- Step 3: top bar buttons, groups ---- */
 .topbar-actions {
-  margin-left: auto;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 .btn-on {
@@ -748,6 +752,39 @@
 }
 .group-empty {
   font-size: 12px;
+}
+.no-outputs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: var(--warn-tint);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+}
+.no-outputs-title {
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 15px;
+}
+.no-outputs .help {
+  margin: 0;
+  color: var(--text);
+}
+.no-outputs-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  background: var(--warn-tint);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .logo-row {
@@ -1768,23 +1805,30 @@
 .service-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  background: var(--bg-button);
-  border: 1px solid var(--border-panel);
-  border-radius: 6px;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1px solid var(--border-panel);
 }
 .service-select {
-  min-width: 220px;
+  min-width: 180px;
+  max-width: 240px;
+  min-height: 32px;
   font-weight: 600;
 }
 .service-name-input {
-  width: 240px;
+  width: 200px;
+  min-height: 32px;
+}
+.service-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-right: 8px;
 }
 .clock {
   font-size: 15px;
   font-weight: 500;
-  margin-left: 8px;
 }
 .elapsed {
   font-size: 12px;

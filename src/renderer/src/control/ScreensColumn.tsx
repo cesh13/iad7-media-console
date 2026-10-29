@@ -8,7 +8,15 @@ import { TypeIcon } from './OrderPanel'
 const api = window.mediaConsole
 
 /** Right column: one card per group, with what it shows now (SPEC 5.4). */
-export function ScreensColumn({ state, screens }: { state: ServiceState; screens: ScreensState | null }) {
+export function ScreensColumn({
+  state,
+  screens,
+  onOpenScreens
+}: {
+  state: ServiceState
+  screens: ScreensState | null
+  onOpenScreens: () => void
+}) {
   const outputs = screens?.outputs ?? []
   const grouped = new Set(state.groups.flatMap((g) => g.config.outputIds))
   const ungrouped = outputs.filter((o) => !grouped.has(o.output.id))
@@ -16,7 +24,15 @@ export function ScreensColumn({ state, screens }: { state: ServiceState; screens
   return (
     <aside className="group-col panel-col">
       <h2 className="label">{strings.screensColumn}</h2>
-      {outputs.length === 0 && <p className="help">{strings.noOutputs}</p>}
+      {screens && !hasConnectedOutput(screens) && (
+        <div className="no-outputs">
+          <div className="no-outputs-title">{strings.noOutputsTitle}</div>
+          <p className="help">{outputs.length === 0 ? strings.noOutputs : strings.noneConnected}</p>
+          <button className="btn" onClick={onOpenScreens}>
+            {strings.openScreensTab}
+          </button>
+        </div>
+      )}
       <AudioLayerCard />
       {state.groups.map((g) => (
         <GroupCard key={g.config.id} group={g} state={state} screens={screens} />
@@ -46,6 +62,11 @@ export function ScreensColumn({ state, screens }: { state: ServiceState; screens
       )}
     </aside>
   )
+}
+
+/** True when at least one output screen is connected now, so the service shows somewhere. */
+export function hasConnectedOutput(screens: ScreensState): boolean {
+  return screens.outputs.some((o) => o.screen)
 }
 
 /** The sound that plays now (one for all screens), with "Audio ✕" (SPEC 5.4 layer buttons). */
@@ -141,7 +162,9 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
           {strings.idleShort}: {strings.idleKinds[config.idle]}
         </div>
       )}
-      {outputs.length === 0 && <div className="dim group-empty">{strings.groupNoScreens}</div>}
+      {outputs.length === 0 && (screens?.outputs.length ?? 0) > 0 && (
+        <div className="dim group-empty">{strings.groupNoScreens}</div>
+      )}
       {outputs.map((o) => (
         <div key={o.output.id} className="group-output">
           <span className={o.screen ? 'dot dot-ok' : 'dot dot-warn'} />

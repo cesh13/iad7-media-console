@@ -12,7 +12,7 @@ import { ScreensColumn } from './ScreensColumn'
 const api = window.mediaConsole
 
 /** Order / Library / Bible tabs (left), preview and live controls (center), screens (right). */
-export function ServicePage() {
+export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
   const state = useServiceState()
   const [screens] = useScreensState()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -146,7 +146,7 @@ export function ServicePage() {
           {leftTab === 'bible' && <BibleMain state={state} bible={bible} />}
           <LivePanel state={state} />
         </div>
-        <ScreensColumn state={state} screens={screens} />
+        <ScreensColumn state={state} screens={screens} onOpenScreens={onOpenScreens} />
       </div>
       <div className="service-bottom">
         <QuickPanel
