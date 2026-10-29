@@ -1,0 +1,47 @@
+/* Colors and type from docs/design/README.md (dark theme). */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  --bg-page: #101215;
+  --bg-panel: #16191d;
+  --bg-card: #1c1f24;
+  --bg-button: #1f2328;
+  --border-panel: #2a2e35;
+  --border-control: #3a3f47;
+  --text: #e8e6e1;
+  --text-2: #9aa0a8;
+  --text-3: #c9cdd3;
+  --label: #868d97;
+  --live: #d13438;
+  --live-tint: #2a1517;
+  --preview: #5ba4ff;
+  --preview-tint: #17263a;
+  --ok: #4cc38a;
+  --warn: #e2b35b;
+  --warn-tint: #3a2e14;
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}

@@ -1,0 +1,89 @@
+/* Output windows: black, no pointer, no scroll bars. */
+html,
+body {
+  background: #000;
+  overflow: hidden;
+  cursor: none;
+  user-select: none;
+}
+
+.test {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 0.6vmin solid var(--preview);
+  background: var(--bg-page);
+}
+
+.test-center {
+  text-align: center;
+}
+.test-number {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 40vmin;
+  line-height: 1;
+  color: var(--preview);
+}
+.test-name {
+  font-size: 7vmin;
+  font-weight: 600;
+  margin-top: 2vmin;
+}
+.test-detail {
+  font-family: var(--font-mono);
+  font-size: 2.6vmin;
+  color: var(--text-2);
+  margin-top: 1vmin;
+}
+.test-hint {
+  font-size: 2.2vmin;
+  color: var(--label);
+  margin-top: 4vmin;
+}
+
+/* Corner marks: if one is cut off, the window does not fit the screen. */
+.test-corner {
+  position: fixed;
+  width: 8vmin;
+  height: 8vmin;
+  border: 0 solid var(--ok);
+}
+.tl {
+  top: 2vmin;
+  left: 2vmin;
+  border-top-width: 1vmin;
+  border-left-width: 1vmin;
+}
+.tr {
+  top: 2vmin;
+  right: 2vmin;
+  border-top-width: 1vmin;
+  border-right-width: 1vmin;
+}
+.bl {
+  bottom: 2vmin;
+  left: 2vmin;
+  border-bottom-width: 1vmin;
+  border-left-width: 1vmin;
+}
+.br {
+  bottom: 2vmin;
+  right: 2vmin;
+  border-bottom-width: 1vmin;
+  border-right-width: 1vmin;
+}
+
+/* Live output: media scales to the screen, keeps its shape, black bars if needed. */
+.live {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+.live-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}

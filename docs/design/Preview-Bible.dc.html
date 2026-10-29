@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bible preview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Serif:wght@500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#101215}button,select,input{font-family:inherit}</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; padding: 16px; background: #101215; color: #E8E6E1; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; gap: 14px;">
+
+<div style="display: flex; align-items: center; gap: 10px;">
+<span style="padding: 3px 8px; background: #5BA4FF; color: #0B1420; font-size: 11px; font-weight: 700; border-radius: 3px; letter-spacing: 0.6px;">PREVIEW</span>
+<h1 style="margin: 0; font-size: 18px; font-weight: 600;">Salmos 23:1-4</h1>
+<span style="color: #9AA0A8;">RV1909 · 4 verses → 5 screens</span>
+<div style="flex: 1;"></div>
+<button type="button" style="height: 36px; padding: 0 16px; background: #D13438; color: #FFFFFF; border: 0; border-radius: 6px; font-size: 13px; font-weight: 700;">Go live</button>
+</div>
+
+<div style="display: flex; gap: 14px; flex: 1; min-height: 0;">
+<div style="flex: 1 1 600px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+<div style="aspect-ratio: 16 / 9; background: #1E2A38; border: 2px solid #5BA4FF; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; padding: 40px 48px; box-sizing: border-box; gap: 18px;">
+<span style="color: #FFFFFF; font-family: 'IBM Plex Serif', serif; font-size: 26px; line-height: 1.4;">Aunque ande en valle de sombra de muerte, no temeré mal alguno; porque tú estarás conmigo…</span>
+<span style="color: #C9D4E2; font-size: 15px; font-weight: 600;">Salmos 23:4 · RV1909 · (1/2)</span>
+</div>
+<span style="color: #868D97; font-size: 12px;">Verse 4 is long, so the app splits it into 2 screens. "…" shows that it continues.</span>
+<div style="display: flex; gap: 6px; flex-wrap: wrap;">
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; background: #1C1F24; color: #868D97; border: 1px solid #2A2E35; border-radius: 4px; font-size: 12px;">23:1 ✓</span>
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; background: #1C1F24; color: #868D97; border: 1px solid #2A2E35; border-radius: 4px; font-size: 12px;">23:2 ✓</span>
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; background: #2A1517; color: #FFFFFF; border: 1px solid #D13438; border-radius: 4px; font-size: 12px; font-weight: 600;">23:3 LIVE</span>
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; background: #17263A; color: #FFFFFF; border: 1px solid #5BA4FF; border-radius: 4px; font-size: 12px; font-weight: 600;">23:4 (1/2)</span>
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; background: #1F2328; color: #C9CDD3; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;">23:4 (2/2)</span>
+<button type="button" style="height: 32px; padding: 0 12px; background: transparent; color: #9AA0A8; border: 1px dashed #3A3F47; border-radius: 4px; font-size: 12px;">+ 23:5</button>
+</div>
+</div>
+
+<div style="flex: 0 0 250px; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #16191D; border: 1px solid #2A2E35; border-radius: 6px;">
+<span style="color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;">Layout</span>
+<label style="display: flex; align-items: center; justify-content: space-between; color: #C9CDD3;">Verses per screen<select style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>1</option><option>2</option><option>Fit as many</option></select></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="checkbox" checked="checked"> Split long verses</label>
+<label style="display: flex; align-items: center; justify-content: space-between; color: #C9CDD3;">Reference<select style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>Below text</option><option>Above text</option><option>Hide</option></select></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="checkbox" checked="checked"> Show version name</label>
+<span style="color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 4px;">Mode</span>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="radio" name="bm" checked="checked"> Full screen</label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="radio" name="bm"> Lower third (over video or stream)</label>
+<span style="color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 4px;">Second version</span>
+<label style="display: flex; align-items: center; justify-content: space-between; color: #C9CDD3;">Show also<select style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>None</option><option>KJV (English)</option></select></label>
+<span style="font-size: 11px; color: #868D97;">For bilingual services. Each version needs its own license, or must be public domain.</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
