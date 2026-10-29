@@ -54,10 +54,13 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
   const isTarget = state.target === 'all' || state.target === config.id
 
   return (
-    <div className={content ? 'group-card is-live' : 'group-card'}>
+    <div className={content || live.text ? 'group-card is-live' : 'group-card'}>
       <div className="group-card-head">
         <span className="group-card-name">{config.name}</span>
         {isTarget && <span className="badge badge-preview">{strings.target}</span>}
+        <button className="btn btn-small btn-quiet" disabled={!live.text} onClick={() => void api.clearText(config.id)}>
+          {strings.textX}
+        </button>
         <button className="btn btn-small btn-quiet" disabled={!content} onClick={() => void api.clear(config.id)}>
           {strings.clear}
         </button>
@@ -65,6 +68,7 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
       <div className="mini">
         <ScreenView
           content={content}
+          text={live.text}
           idle={{
             kind: config.idle,
             media: config.idleMedia.filter((m) => m.url).map((m) => ({ type: m.type, url: m.url! })),
@@ -81,6 +85,12 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
           <TypeIcon type={item.type} />
           <span className="row-title">{item.title}</span>
           {item.type === 'video' && <span className="mono dim">{formatTime(playback?.currentTime)}</span>}
+        </div>
+      ) : live.text ? (
+        <div className="group-now">
+          <span className="tag tag-live">{strings.badgeLive}</span>
+          <span className="row-title">{live.text.title}</span>
+          <span className="mono dim">{live.text.screens[live.text.index]?.label}</span>
         </div>
       ) : (
         <div className="group-now dim">

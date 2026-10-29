@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentLayer, EndAction, ImageFit, ItemSettings, ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView, type PlaybackReport } from '../view/ScreenView'
+import { BiblePreview } from './BiblePreview'
 
 const api = window.mediaConsole
 
@@ -27,6 +28,7 @@ export function PreviewPanel({ state, item }: { state: ServiceState; item: Servi
         </div>
       </section>
     )
+  if (item.type === 'bible') return <BiblePreview key={item.id} state={state} item={item} />
   return <ItemPreview key={item.id} state={state} item={item} />
 }
 
@@ -122,39 +124,50 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
         <SlidesOptions item={item} page={page} livePage={liveContent?.page} onPage={setPage} set={set} />
       )}
 
-      <div className="preview-common">
-        <label className="field-col">
-          <span className="label-inline">{strings.notes}</span>
-          <NotesInput item={item} />
-        </label>
-        <div className="field-col">
-          <label className="check">
-            <input type="checkbox" checked={item.settings.autoDone} onChange={(e) => set({ autoDone: e.target.checked })} />
-            {strings.autoDone}
-          </label>
-          <div className="button-row">
-            {item.status === 'done' ? (
-              <button className="btn" onClick={() => void api.setItemStatus(item.id, 'pending')}>
-                {strings.markPending}
-              </button>
-            ) : (
-              <button className="btn" onClick={() => void api.setItemStatus(item.id, 'done')}>
-                {strings.markDone}
-              </button>
-            )}
-            {item.cache === 'error' && (
-              <button className="btn" onClick={() => void api.retryCopy(item.id)}>
-                {strings.retryCopy}
-              </button>
-            )}
-            <button className="btn btn-quiet" onClick={() => void api.removeItem(item.id)}>
-              {strings.remove}
-            </button>
-          </div>
-          <span className="mono dim path">{item.path}</span>
-        </div>
-      </div>
+      <NotesAndStatus item={item} />
     </section>
+  )
+}
+
+/** Notes, "auto-mark done", mark done, remove: the same for every item type. */
+export function NotesAndStatus({ item }: { item: ServiceItem }) {
+  return (
+    <div className="preview-common">
+      <label className="field-col">
+        <span className="label-inline">{strings.notes}</span>
+        <NotesInput item={item} />
+      </label>
+      <div className="field-col">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={item.settings.autoDone}
+            onChange={(e) => void api.updateItem(item.id, { settings: { autoDone: e.target.checked } })}
+          />
+          {strings.autoDone}
+        </label>
+        <div className="button-row">
+          {item.status === 'done' ? (
+            <button className="btn" onClick={() => void api.setItemStatus(item.id, 'pending')}>
+              {strings.markPending}
+            </button>
+          ) : (
+            <button className="btn" onClick={() => void api.setItemStatus(item.id, 'done')}>
+              {strings.markDone}
+            </button>
+          )}
+          {item.cache === 'error' && (
+            <button className="btn" onClick={() => void api.retryCopy(item.id)}>
+              {strings.retryCopy}
+            </button>
+          )}
+          <button className="btn btn-quiet" onClick={() => void api.removeItem(item.id)}>
+            {strings.remove}
+          </button>
+        </div>
+        {item.path && <span className="mono dim path">{item.path}</span>}
+      </div>
+    </div>
   )
 }
 

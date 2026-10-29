@@ -82,7 +82,7 @@ export interface TestInfo {
 // ---- Service order (SPEC section 4) ----
 
 /** Item types supported so far. More types come in later steps. */
-export type ItemType = 'video' | 'image' | 'slides'
+export type ItemType = 'video' | 'image' | 'slides' | 'bible'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
@@ -119,7 +119,62 @@ export interface ItemSettings {
   autoAdvance?: number | null
   /** After the last page, start again at the first page. */
   loop?: boolean
+  // Bible (SPEC section 6)
+  /** Verses on one screen. 0 = as many as fit. */
+  versesPerScreen?: number
+  /** Split a long verse into more screens, with "…". */
+  splitLong?: boolean
+  refPosition?: 'below' | 'above' | 'hide'
+  showVersion?: boolean
+  /** Full screen, or lower third over video. */
+  mode?: 'full' | 'lower'
+  /** Show the same verses in a second version (bilingual services). */
+  secondBibleId?: string | null
 }
+
+// ---- Bible ----
+
+/** An imported Bible version. */
+export interface BibleVersion {
+  id: string
+  name: string
+  abbrev: string
+  /** Number of verses: verseCounts[book - 1][chapter - 1]. */
+  verseCounts: number[][]
+}
+
+/** A passage: one chapter, verses `from` to `to`. */
+export interface BibleRef {
+  bibleId: string
+  book: number
+  chapter: number
+  from: number
+  to: number
+}
+
+/** One screen of Bible text. */
+export interface BibleScreen {
+  text: string
+  /** Second version, for bilingual services. */
+  second?: string
+  /** Reference on screen: "Salmos 23:4 · RV1909". */
+  ref: string
+  /** Short label for lists: "23:4 (1/2)". */
+  label: string
+  verse: number
+}
+
+export interface BibleHit {
+  book: number
+  chapter: number
+  verse: number
+  text: string
+}
+
+export type BibleSearchResult =
+  | { kind: 'ref'; book: number; chapter?: number; from?: number; to?: number }
+  | { kind: 'words'; hits: BibleHit[]; more: boolean }
+  | { kind: 'none' }
 
 /**
  * State of the local cached copy of an item's file. Slides also go through
@@ -152,6 +207,8 @@ export interface ServiceItem {
   /** Slides: one picture per page (media:// URLs), and the text of each page. */
   pageUrls?: string[]
   pageTexts?: string[]
+  /** Bible: the passage. */
+  bible?: BibleRef
 }
 
 export interface Service {
@@ -159,6 +216,8 @@ export interface Service {
   name: string
   date: string
   items: ServiceItem[]
+  /** Bible passages shown in this service ("Today" chips). */
+  bibleHistory?: BibleRef[]
 }
 
 // ---- Live state ----
@@ -185,9 +244,23 @@ export interface ContentLayer {
   ended?: boolean
 }
 
+/** Text over everything else of the group (Bible verses now; messages later). */
+export interface TextLayer {
+  /** The order item, or null for "Show now" from the Bible panel. */
+  itemId: string | null
+  take: number
+  title: string
+  ref: BibleRef
+  screens: BibleScreen[]
+  /** The screen shown now. */
+  index: number
+  settings: ItemSettings
+}
+
 /** What a group shows now, by layer (SPEC section 4). More layers come later. */
 export interface GroupLive {
   content: ContentLayer | null
+  text: TextLayer | null
 }
 
 /** Where "Go live" sends an item: one group, or all groups. */
@@ -222,6 +295,9 @@ export interface ServiceState {
   /** The item that "Next" makes live (blue NEXT mark). */
   nextItemId: string | null
   overlays: Overlays
+  bibles: BibleVersion[]
+  /** Bible passages shown in this service ("Today" chips). */
+  bibleHistory: BibleRef[]
   logoUrl?: string
 }
 
@@ -238,6 +314,7 @@ export interface OutputRender {
   /** Only one output plays the sound of each take, so the audio is not doubled. */
   audioTakes: number[]
   content: ContentLayer | null
+  text: TextLayer | null
   idle: { kind: IdleKind; media: { type: 'image' | 'video'; url: string }[]; interval: number }
   logoUrl?: string
   overlays: Overlays
@@ -294,6 +371,24 @@ export interface MediaConsoleApi {
   setPlaying(take: number, playing: boolean): Promise<void>
   seek(take: number, seconds: number): Promise<void>
   setOverlay(name: keyof Overlays, on: boolean): Promise<void>
+  /** Remove the text layer of the target, of one group, or of all groups ("Clear text"). */
+  clearText(groupId?: string | 'all'): Promise<void>
+
+  // Bible
+  /** Show a file dialog and import a Bible file. Returns an error text, or null. */
+  importBible(): Promise<string | null>
+  /** Import a Bible file dropped on the Bible panel. Returns an error text, or null. */
+  importBibleFrom(path: string): Promise<string | null>
+  removeBible(bibleId: string): Promise<void>
+  getChapter(bibleId: string, book: number, chapter: number): Promise<string[]>
+  searchBible(bibleId: string, query: string): Promise<BibleSearchResult>
+  addBibleToOrder(ref: BibleRef): Promise<void>
+  /** Show the passage now on the target, without adding it to the order. Starts at verse `startVerse`. */
+  showBibleNow(ref: BibleRef, startVerse?: number): Promise<void>
+  /** Bible text live in the target: show the screen of this verse. */
+  showVerse(verse: number): Promise<void>
+  /** Screens for a passage with the given settings (for the preview). */
+  bibleScreens(ref: BibleRef, settings: Partial<ItemSettings>): Promise<BibleScreen[]>
 
   // Output windows
   onOutputRender(callback: (render: OutputRender) => void): () => void

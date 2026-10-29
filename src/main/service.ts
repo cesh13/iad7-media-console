@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
+import { refLabel } from '../shared/bibleBooks'
 import type {
   AddFilesResult,
+  BibleRef,
+  BibleScreen,
   GroupConfig,
   GroupLive,
   ItemSettings,
@@ -14,8 +17,10 @@ import type {
   Service,
   ServiceItem,
   ServiceState,
-  Target
+  Target,
+  TextLayer
 } from '../shared/types'
+import { bibleDefaults, buildScreens, listBibles } from './bible'
 import { cacheFile, mediaUrl } from './cache'
 import { renderPdfPages } from './pdfPages'
 import { convertToPdf } from './pptx'
@@ -97,6 +102,7 @@ export function flushSave(): void {
 export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
   if (type === 'slides') return { autoDone: true, autoAdvance: null, loop: false }
+  if (type === 'bible') return bibleDefaults()
   return { autoDone: true, fit: 'fit', autoNext: null }
 }
 
@@ -107,6 +113,7 @@ export function initService(loaded: Service): void {
     item.settings = { ...defaultSettings(item.type), ...item.settings }
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
+    if (item.type === 'bible') continue // No file to copy.
     // Copy again if the app stopped during a copy, or the cache was cleared.
     const pagesMissing = item.type === 'slides' && !item.pageUrls?.length
     if (item.cache !== 'ready' || !item.localCopyPath || !existsSync(item.localCopyPath) || pagesMissing) startCopy(item)
@@ -115,7 +122,7 @@ export function initService(loaded: Service): void {
 }
 
 export function groupLive(groupId: string): GroupLive {
-  return live.get(groupId) ?? { content: null }
+  return live.get(groupId) ?? { content: null, text: null }
 }
 
 export function getOverlays(): Overlays {
@@ -135,7 +142,9 @@ export function serviceState(): ServiceState {
     playback: Object.fromEntries(playback),
     nextItemId: next >= 0 ? service.items[next].id : null,
     overlays,
-    logoUrl: logoUrl()
+    logoUrl: logoUrl(),
+    bibles: listBibles(),
+    bibleHistory: service.bibleHistory ?? []
   }
 }
 
@@ -240,7 +249,7 @@ export function retryCopy(itemId: string): void {
 }
 
 export function removeItem(itemId: string): void {
-  clearGroups(groupsShowing(itemId), false)
+  clearGroups(groupsShowing(itemId), false, 'both')
   service.items = service.items.filter((i) => i.id !== itemId)
   changed()
 }
@@ -257,7 +266,7 @@ export function setItemStatus(itemId: string, status: ItemStatus): void {
   const item = findItem(itemId)
   if (!item) return
   if (status === 'live') return goLive(itemId)
-  clearGroups(groupsShowing(itemId), false)
+  clearGroups(groupsShowing(itemId), false, 'both')
   item.status = status
   changed()
 }
@@ -275,6 +284,14 @@ export function updateItem(
     item.settings = { ...item.settings, ...change.settings }
     // Groups that show the item use the new settings at once.
     for (const g of live.values()) if (g.content?.itemId === itemId) g.content.settings = item.settings
+    // Bible text: make the screens again with the new settings, at the same verse.
+    for (const g of live.values()) {
+      if (g.text?.itemId !== itemId || !item.bible) continue
+      const verse = g.text.screens[g.text.index]?.verse
+      g.text.settings = item.settings
+      g.text.screens = buildScreens(item.bible, item.settings)
+      g.text.index = Math.max(0, g.text.screens.findIndex((s) => s.verse === verse))
+    }
   }
   changed({ outputs: !!change.settings })
 }
@@ -289,18 +306,22 @@ export function setDuration(itemId: string, seconds: number): void {
 // ---- Live ----
 
 function isReady(item: ServiceItem): boolean {
+  if (item.type === 'bible') return !!item.bible && listBibles().some((b) => b.id === item.bible!.bibleId)
   if (item.type === 'slides' && !item.pageUrls?.length) return false
   return item.cache === 'ready' && !!item.url
 }
 
 function liveItemIds(): Set<string> {
   const ids = new Set<string>()
-  for (const g of live.values()) if (g.content) ids.add(g.content.itemId)
+  for (const g of live.values()) {
+    if (g.content) ids.add(g.content.itemId)
+    if (g.text?.itemId) ids.add(g.text.itemId)
+  }
   return ids
 }
 
 function groupsShowing(itemId: string): string[] {
-  return [...live].filter(([, g]) => g.content?.itemId === itemId).map(([id]) => id)
+  return [...live].filter(([, g]) => g.content?.itemId === itemId || g.text?.itemId === itemId).map(([id]) => id)
 }
 
 /** Items that were live and are not live in any group now get "done" (or "pending"). */
@@ -315,7 +336,7 @@ function updateStatuses(before: Set<string>, markDone: boolean): void {
     if (item && !now.has(id)) item.status = markDone && item.settings.autoDone ? 'done' : 'pending'
   }
   // Forget playback of takes that no group shows.
-  const takes = new Set([...live.values()].map((g) => g.content?.take))
+  const takes = new Set([...live.values()].flatMap((g) => [g.content?.take, g.text?.take]))
   for (const t of [...playback.keys()]) if (!takes.has(t)) playback.delete(t)
   for (const [t, timer] of autoNextTimers) {
     if (takes.has(t)) continue
@@ -338,13 +359,21 @@ function targetGroupIds(t: Target = target): string[] {
  */
 function referenceLive(): GroupLive | undefined {
   const ids = targetGroupIds()
-  const showing = ids.find((id) => groupLive(id).content)
+  const showing = ids.find((id) => currentItemId(groupLive(id)))
   return groupLive(showing ?? ids[0] ?? '')
 }
 
+/** The order item a group shows: the one that went live last (content or text layer). */
+function currentItemId(g: GroupLive): string | null {
+  const text = g.text?.itemId ? g.text : null
+  if (g.content && (!text || g.content.take > text.take)) return g.content.itemId
+  return text?.itemId ?? null
+}
+
 function liveIndex(): number {
-  const content = referenceLive()?.content
-  return content ? service.items.findIndex((i) => i.id === content.itemId) : -1
+  const g = referenceLive()
+  const id = g ? currentItemId(g) : null
+  return id ? service.items.findIndex((i) => i.id === id) : -1
 }
 
 /**
@@ -373,11 +402,15 @@ export function goLive(itemId: string, t?: Target, page = 0): void {
 function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
   const item = findItem(itemId)
   if (!item || !isReady(item) || groupIds.length === 0) return
+  if (item.type === 'bible') return showText(groupIds, item.id, item.bible!, item.settings, item.title)
   const before = liveItemIds()
   const t = ++take
   for (const id of groupIds) {
+    const g = groupLive(id)
     live.set(id, {
-      ...groupLive(id),
+      ...g,
+      // New content replaces Bible text from the order, and full-screen text.
+      text: g.text && (g.text.itemId || g.text.settings.mode !== 'lower') ? null : g.text,
       content: {
         itemId: item.id,
         type: item.type,
@@ -423,8 +456,17 @@ function stepTake(t: number, delta: number): void {
   changed({ save: false })
 }
 
-/** ← → keys: change the page of the slides that are live in the target. */
+/** ← → keys: change the Bible screen, or the page of the slides, live in the target. */
 export function pageStep(delta: number): void {
+  const textTakes = new Set(
+    targetGroupIds()
+      .map((id) => groupLive(id).text?.take)
+      .filter((t): t is number => t !== undefined)
+  )
+  if (textTakes.size) {
+    for (const t of textTakes) stepText(t, delta)
+    return
+  }
   const takes = new Set(
     targetGroupIds()
       .map((id) => groupLive(id).content)
@@ -448,22 +490,30 @@ function groupsWithTake(t: number): string[] {
   return [...live].filter(([, g]) => g.content?.take === t).map(([id]) => id)
 }
 
+function groupsWithTextTake(t: number): string[] {
+  return [...live].filter(([, g]) => g.text?.take === t).map(([id]) => id)
+}
+
 /** The groups that show this take go to the item after it (or to idle after the last item). */
 function advanceFrom(t: number): void {
-  const groupIds = groupsWithTake(t)
-  const itemId = groupIds.length ? live.get(groupIds[0])!.content!.itemId : null
+  let groupIds = groupsWithTake(t)
+  let itemId = groupIds.length ? live.get(groupIds[0])!.content!.itemId : null
+  if (!itemId) {
+    groupIds = groupsWithTextTake(t)
+    itemId = groupIds.length ? live.get(groupIds[0])!.text!.itemId : null
+  }
   if (!itemId) return
   const items = service.items
   const from = items.findIndex((i) => i.id === itemId)
   const nextItem = items.slice(from + 1).find(isReady)
   if (nextItem) goLiveIn(groupIds, nextItem.id)
-  else clearGroups(groupIds, true)
+  else clearGroups(groupIds, true, 'both')
 }
 
 export function next(): void {
   const i = nextIndex()
   if (i >= 0) goLive(service.items[i].id)
-  else clearGroups(targetGroupIds(), true) // The last item ended: go to idle.
+  else clearGroups(targetGroupIds(), true, 'both') // The last item ended: go to idle.
 }
 
 export function previous(): void {
@@ -476,14 +526,17 @@ export function previous(): void {
   }
 }
 
-/** Stop showing content in these groups. They show their idle screen. */
-function clearGroups(groupIds: string[], markDone: boolean): void {
+/** Remove a layer in these groups. With nothing left, a group shows its idle screen. */
+function clearGroups(groupIds: string[], markDone: boolean, layer: 'content' | 'text' | 'both' = 'content'): void {
   const before = liveItemIds()
   let any = false
   for (const id of groupIds) {
     const g = live.get(id)
-    if (g?.content) {
-      live.set(id, { ...g, content: null })
+    if (!g) continue
+    const content = layer === 'text' ? g.content : null
+    const text = layer === 'content' ? g.text : null
+    if (content !== g.content || text !== g.text) {
+      live.set(id, { content, text })
       any = true
     }
   }
@@ -492,8 +545,91 @@ function clearGroups(groupIds: string[], markDone: boolean): void {
   changed()
 }
 
+/** Esc: clear the target (content and text), or the content of one group. */
 export function clear(groupId?: string): void {
-  clearGroups(groupId ? [groupId] : targetGroupIds(), true)
+  if (groupId) clearGroups([groupId], true, 'content')
+  else clearGroups(targetGroupIds(), true, 'both')
+}
+
+/** "Clear text": the target, one group, or all groups. */
+export function clearText(groupId?: string): void {
+  const ids = groupId === 'all' ? getGroups().map((g) => g.id) : groupId ? [groupId] : targetGroupIds()
+  clearGroups(ids, true, 'text')
+}
+
+// ---- Bible text ----
+
+/** Put Bible screens on the text layer of these groups. Full screen also removes the content. */
+function showText(groupIds: string[], itemId: string | null, ref: BibleRef, settings: ItemSettings, title: string, startVerse?: number): void {
+  const screens = buildScreens(ref, settings)
+  if (screens.length === 0 || groupIds.length === 0) return
+  const before = liveItemIds()
+  const t = ++take
+  const index = startVerse ? Math.max(0, screens.findIndex((s) => s.verse >= startVerse)) : 0
+  const text: TextLayer = { itemId, take: t, title, ref, screens, index, settings }
+  for (const id of groupIds) {
+    const g = groupLive(id)
+    live.set(id, { content: settings.mode === 'lower' ? g.content : null, text: { ...text } })
+  }
+  remember(ref)
+  updateStatuses(before, true)
+  changed()
+}
+
+/** Keep the passage in the "Today" list of this service (newest first, no doubles). */
+function remember(ref: BibleRef): void {
+  const label = refLabel(ref)
+  service.bibleHistory = [ref, ...(service.bibleHistory ?? []).filter((r) => refLabel(r) !== label)].slice(0, 12)
+}
+
+function stepText(t: number, delta: number): void {
+  const groupIds = groupsWithTextTake(t)
+  const text = groupIds.length ? live.get(groupIds[0])!.text! : null
+  if (!text) return
+  const index = text.index + delta
+  // After the last screen, Bible items from the order go to the next item.
+  if (index >= text.screens.length) {
+    if (text.itemId) advanceFrom(t)
+    return
+  }
+  for (const id of groupIds) live.get(id)!.text!.index = Math.max(0, index)
+  changed({ save: false })
+}
+
+export function addBibleToOrder(ref: BibleRef): void {
+  service.items.push({
+    id: randomUUID(),
+    type: 'bible',
+    title: refLabel(ref),
+    path: '',
+    cache: 'ready',
+    status: 'pending',
+    bible: ref,
+    settings: bibleDefaults()
+  })
+  changed()
+}
+
+/** "Show now" in the Bible panel: live on the target, not added to the order. */
+export function showBibleNow(ref: BibleRef, startVerse?: number): void {
+  showText(targetGroupIds(), null, ref, bibleDefaults(), refLabel(ref), startVerse)
+}
+
+/** Show the screen of one verse in the Bible text that is live in the target. */
+export function showVerse(verse: number): void {
+  let any = false
+  for (const id of targetGroupIds()) {
+    const text = groupLive(id).text
+    if (!text) continue
+    const index = text.screens.findIndex((s) => s.verse >= verse)
+    if (index >= 0) text.index = index
+    any = true
+  }
+  if (any) changed({ save: false })
+}
+
+export function bibleScreens(ref: BibleRef, settings: Partial<ItemSettings>): BibleScreen[] {
+  return buildScreens(ref, { ...bibleDefaults(), ...settings })
 }
 
 /** Change the content of every group that shows this take. */

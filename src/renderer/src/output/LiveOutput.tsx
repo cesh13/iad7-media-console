@@ -15,6 +15,7 @@ export function LiveOutput() {
   return (
     <ScreenView
       content={render.content}
+      text={render.text}
       idle={render.idle}
       logoUrl={render.logoUrl}
       overlays={render.overlays}

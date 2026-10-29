@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ContentLayer, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { useScreensState, useServiceState } from './hooks'
+import { BiblePanel } from './BiblePanel'
 import { OrderPanel, TypeIcon } from './OrderPanel'
 import { PreviewPanel } from './PreviewPanel'
 import { ScreensColumn } from './ScreensColumn'
@@ -22,6 +23,8 @@ export function ServicePage() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
+      // The Bible verse list uses ↑ ↓ itself (verse by verse).
+      if (target.closest('[data-own-keys]') && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
       if (e.key === ' ') {
         e.preventDefault()
         void api.next()
@@ -49,12 +52,17 @@ export function ServicePage() {
 
   return (
     <div className="service">
-      <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
-      <div className="service-center">
-        <PreviewPanel state={state} item={selected} />
-        <LivePanel state={state} />
+      <div className="service-top">
+        <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
+        <div className="service-center">
+          <PreviewPanel state={state} item={selected} />
+          <LivePanel state={state} />
+        </div>
+        <ScreensColumn state={state} screens={screens} />
       </div>
-      <ScreensColumn state={state} screens={screens} />
+      <div className="service-bottom">
+        <BiblePanel state={state} />
+      </div>
     </div>
   )
 }
@@ -72,12 +80,34 @@ function LivePanel({ state }: { state: ServiceState }) {
     takes.set(c.take, entry)
   }
 
+  const texts = new Map<number, { title: string; label: string; groups: string[] }>()
+  for (const g of state.groups) {
+    const t = g.live.text
+    if (!t) continue
+    const entry = texts.get(t.take) ?? { title: t.title, label: t.screens[t.index]?.label ?? '', groups: [] }
+    entry.groups.push(g.config.name)
+    texts.set(t.take, entry)
+  }
+
   return (
-    <section className={takes.size ? 'panel live-panel is-live' : 'panel live-panel'}>
+    <section className={takes.size || texts.size ? 'panel live-panel is-live' : 'panel live-panel'}>
       <div className="live-head">
         <h2 className="label">{strings.liveLabel}</h2>
       </div>
-      {takes.size === 0 && <p className="help">{strings.nothingLive}</p>}
+      {takes.size === 0 && texts.size === 0 && <p className="help">{strings.nothingLive}</p>}
+      {[...texts.entries()].map(([t, x]) => (
+        <div key={t} className="live-take">
+          <div className="live-now">
+            <span className="tag tag-live">{strings.badgeLive}</span>
+            <span className="live-title">{x.title}</span>
+            <span className="mono">{x.label}</span>
+            <span className="dim">→ {x.groups.join(', ')}</span>
+            <button className="btn btn-small btn-quiet" onClick={() => void api.clearText()}>
+              {strings.clearTextShort}
+            </button>
+          </div>
+        </div>
+      ))}
       {[...takes.values()].map(({ content, groups }) => (
         <LiveTake key={content.take} state={state} content={content} groups={groups} />
       ))}

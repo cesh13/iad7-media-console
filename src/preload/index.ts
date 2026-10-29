@@ -50,6 +50,18 @@ const api: MediaConsoleApi = {
   setPlaying: (take, playing) => invoke('live:setPlaying', take, playing),
   seek: (take, seconds) => invoke('live:seek', take, seconds),
   setOverlay: (name, on) => invoke('live:overlay', name, on),
+  clearText: (groupId) => invoke('live:clearText', groupId),
+
+  // Bible
+  importBible: () => invoke('bible:import'),
+  importBibleFrom: (path) => invoke('bible:importFrom', path),
+  removeBible: (id) => invoke('bible:remove', id),
+  getChapter: (id, book, chapter) => invoke('bible:chapter', id, book, chapter),
+  searchBible: (id, query) => invoke('bible:search', id, query),
+  addBibleToOrder: (ref) => invoke('bible:addToOrder', ref),
+  showBibleNow: (ref, startVerse) => invoke('bible:showNow', ref, startVerse),
+  showVerse: (verse) => invoke('bible:showVerse', verse),
+  bibleScreens: (ref, settings) => invoke('bible:screens', ref, settings),
 
   // Output windows
   onOutputRender: (cb) => listen<OutputRender>('output:render', cb),

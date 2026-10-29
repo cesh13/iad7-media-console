@@ -1,6 +1,17 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { randomUUID } from 'node:crypto'
-import type { GroupConfig, ItemStatus, Overlays, PlaybackInfo, ScreensState, Settings, Target } from '../shared/types'
+import type {
+  BibleRef,
+  GroupConfig,
+  ItemSettings,
+  ItemStatus,
+  Overlays,
+  PlaybackInfo,
+  ScreensState,
+  Settings,
+  Target
+} from '../shared/types'
+import * as bible from './bible'
 import { listScreens, matchOutputs } from './displays'
 import * as groups from './groups'
 import {
@@ -196,6 +207,33 @@ function registerIpc(): void {
   ipcMain.handle('live:setPlaying', (_e, take: number, playing: boolean) => svc.setPlaying(take, playing))
   ipcMain.handle('live:seek', (_e, take: number, seconds: number) => svc.seek(take, seconds))
   ipcMain.handle('live:overlay', (_e, name: keyof Overlays, on: boolean) => svc.setOverlay(name, on))
+  ipcMain.handle('live:clearText', (_e, groupId?: string) => svc.clearText(groupId))
+
+  // ---- Bible ----
+  const importBibleFile = async (path: string): Promise<string | null> => {
+    try {
+      await bible.importBible(path)
+      sendServiceState()
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err)
+    }
+  }
+  ipcMain.handle('bible:import', async () => {
+    const [path] = await pickPaths({ multi: false, extensions: ['xml', 'json', 'txt', 'csv', 'tsv'], name: 'Bible files' })
+    return path ? importBibleFile(path) : null
+  })
+  ipcMain.handle('bible:importFrom', (_e, path: string) => importBibleFile(path))
+  ipcMain.handle('bible:remove', (_e, id: string) => {
+    bible.removeBible(id)
+    sendServiceState()
+  })
+  ipcMain.handle('bible:chapter', (_e, id: string, book: number, chapter: number) => bible.getChapter(id, book, chapter))
+  ipcMain.handle('bible:search', (_e, id: string, query: string) => bible.search(id, query))
+  ipcMain.handle('bible:addToOrder', (_e, ref: BibleRef) => svc.addBibleToOrder(ref))
+  ipcMain.handle('bible:showNow', (_e, ref: BibleRef, startVerse?: number) => svc.showBibleNow(ref, startVerse))
+  ipcMain.handle('bible:showVerse', (_e, verse: number) => svc.showVerse(verse))
+  ipcMain.handle('bible:screens', (_e, ref: BibleRef, settings: Partial<ItemSettings>) => svc.bibleScreens(ref, settings))
 
   ipcMain.on('output:playback', (_e, info: PlaybackInfo & { ended: boolean }) => svc.reportPlayback(info))
 }

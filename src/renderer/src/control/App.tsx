@@ -36,6 +36,13 @@ export function App() {
               {strings.logo}
             </button>
             <button
+              className="btn"
+              disabled={!state.groups.some((g) => g.live.text)}
+              onClick={() => void api.clearText('all')}
+            >
+              {strings.clearText}
+            </button>
+            <button
               className={overlays.black ? 'btn btn-black is-on' : 'btn btn-black'}
               onClick={() => void api.setOverlay('black', !overlays.black)}
             >

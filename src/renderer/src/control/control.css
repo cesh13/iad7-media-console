@@ -235,6 +235,18 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
+}
+.service-top {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.service-bottom {
+  flex-shrink: 0;
+  height: 372px;
+  display: flex;
+  border-top: 1px solid var(--border-panel);
 }
 .panel-col {
   background: var(--bg-panel);
@@ -913,4 +925,212 @@
   color: #fff;
   background: rgba(0, 0, 0, 0.7);
   border-radius: 3px;
+}
+
+/* ---- Step 6: Bible panel ---- */
+.bible {
+  flex: 2 1 560px;
+  min-width: 0;
+  padding: 12px 16px;
+  gap: 8px;
+}
+.bible-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bible-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.bible-search {
+  flex: 1 1 200px;
+  min-width: 0;
+  width: auto;
+  min-height: 36px;
+  border-color: var(--preview);
+}
+.bible-loc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn-icon {
+  width: 32px;
+  padding: 0;
+  font-size: 16px;
+}
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.crumbs a {
+  color: #8ec1ff;
+  cursor: pointer;
+}
+.crumbs span {
+  color: #5a6069;
+}
+.spacer {
+  flex: 1;
+}
+.chip-live {
+  background: var(--live-tint);
+  border-color: var(--live);
+  color: var(--text);
+}
+.bible-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+.picker {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  outline: none;
+}
+.picker-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.step {
+  height: 32px;
+  background: var(--bg-button);
+  color: var(--text-3);
+  border: 1px solid var(--border-control);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.step.is-on {
+  background: var(--preview-tint);
+  border-color: var(--preview);
+  color: #fff;
+}
+/* One area with a fixed height for all three steps (SPEC 5.5). */
+.picker-area {
+  height: 236px;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.books {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.book-grid,
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+}
+.book,
+.num {
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border-panel);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.num {
+  background: var(--bg-button);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+.book.is-on,
+.num.is-on {
+  background: var(--preview);
+  border-color: var(--preview);
+  color: #0b1420;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+.verse-list {
+  flex: 1 1 400px;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  outline: none;
+}
+.verse-list:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--preview);
+  border-radius: 6px;
+}
+.verse-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--text-3);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.verse-row:hover {
+  background: var(--bg-card);
+}
+.verse-row.is-selected {
+  background: var(--bg-card);
+  border-color: var(--border-control);
+  color: var(--text);
+}
+.verse-row.is-live {
+  background: var(--live-tint);
+  border-color: var(--live);
+  color: var(--text);
+}
+.verse-row.is-next {
+  background: var(--preview-tint);
+  border-color: var(--preview);
+  color: var(--text);
+}
+.verse-num {
+  flex-shrink: 0;
+  min-width: 44px;
+  color: var(--text-2);
+}
+.verse-line {
+  flex: 1;
+  line-height: 1.45;
+}
+.screen-chips {
+  margin-bottom: 12px;
 }

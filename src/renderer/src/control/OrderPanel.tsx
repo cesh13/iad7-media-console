@@ -152,6 +152,7 @@ function OrderRow(props: {
         )}
         {item.cache === 'ready' && item.type === 'video' && formatTime(item.duration)}
         {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
+        {item.type === 'bible' && item.bible && strings.verseCount(item.bible.to - item.bible.from + 1)}
       </span>
     </div>
   )
@@ -174,7 +175,12 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
   return (
     <span className="type-icon" title={strings.types[type]}>
-      {type === 'slides' ? (
+      {type === 'bible' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+          <path d="M4 19V5" />
+        </svg>
+      ) : type === 'slides' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <rect x="3" y="4" width="18" height="12" rx="1.5" />
           <path d="M12 16v4M8 20h8M7 8h6M7 11h10" />

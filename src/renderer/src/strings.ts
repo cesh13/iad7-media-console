@@ -35,7 +35,7 @@ export const strings = {
   orderLabel: 'Order',
   addFiles: 'Add files',
   progress: (done: number, total: number) => `${done} of ${total} done`,
-  emptyOrder: 'Drop video or image files here, or use Add files. Files are added in file-name order.',
+  emptyOrder: 'Drop videos, pictures, PDF or PowerPoint files here, or use Add files. Files are added in file-name order.',
   dropHere: 'Drop to add to the order',
   skippedFiles: (names: string[]) => `Not added (type not supported): ${names.join(', ')}`,
   badgeLive: 'LIVE',
@@ -44,7 +44,8 @@ export const strings = {
   copyError: 'error',
   typeVideo: 'Video',
   typeImage: 'Image',
-  types: { video: 'Video', image: 'Image', slides: 'Slides' } as Record<ItemType, string>,
+  types: { video: 'Video', image: 'Image', slides: 'Slides', bible: 'Bible' } as Record<ItemType, string>,
+  verseCount: (n: number) => (n === 1 ? '1 verse' : `${n} verses`),
   slideCount: (n: number) => (n === 1 ? '1 slide' : `${n} slides`),
   cacheStates: (item: ServiceItem): string => {
     const pct = Math.round((item.cacheProgress ?? 0) * 100)
@@ -100,6 +101,48 @@ export const strings = {
   autoAdvanceEvery: 'Next page every',
   loopSlides: 'Loop (after the last page, start again)',
 
+  // Bible panel
+  bibleLabel: 'Bible',
+  noBible:
+    'No Bible version yet. Import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text. Use only public-domain versions (for example RV1909) or versions the church has a license for.',
+  importBible: 'Import a Bible file…',
+  importShort: 'Import…',
+  importBibleHint: 'Import another Bible version from a file',
+  bibleSearchPlaceholder: 'jn 3 16 · sal 23:1-4 · buen pastor',
+  addToOrder: 'Add to order',
+  showNow: 'Show now',
+  prevChapter: 'Previous chapter',
+  nextChapter: 'Next chapter',
+  crumbBooks: 'Libros',
+  today: 'Today',
+  stepBook: 'Libro',
+  stepChapter: 'Capítulo',
+  stepVerse: 'Versículo',
+  oldTestament: 'Antiguo Testamento',
+  newTestament: 'Nuevo Testamento',
+  pickChapter: (book: string, count: number) => `${book} · pick a chapter (${count})`,
+  pickVerse: (book: string, chapter: number) => `${book} ${chapter} · pick a verse (Shift+click = range)`,
+  pickerHelp: 'Type a number to jump (for example "23"). Double-click a verse: show it now.',
+  versesOf: (book: string, chapter: number) => `Verses · ${book} ${chapter}`,
+  searchResults: (n: number, more: boolean) => (n === 0 ? 'No verses found' : `${n}${more ? '+' : ''} verses found`),
+
+  // Bible preview
+  bibleMissing: 'version not found',
+  versesToScreens: (verses: number, screens: number) => `${verses} verses → ${screens} screens`,
+  splitNote: 'This verse is long, so it is split into more screens. "…" shows that it continues.',
+  versesPerScreen: 'Verses per screen',
+  fitMany: 'Fit as many',
+  splitLong: 'Split long verses',
+  reference: 'Reference',
+  refPositions: { below: 'Below text', above: 'Above text', hide: 'Hide' } as Record<'below' | 'above' | 'hide', string>,
+  showVersion: 'Show version name',
+  mode: 'Mode',
+  modeFull: 'Full screen',
+  modeLower: 'Lower third (over video)',
+  secondVersion: 'Second version',
+  none: 'None',
+  licenseNote: 'For bilingual services. Each version needs its own license, or must be public domain.',
+
   // Live panel
   liveLabel: 'Live',
   nothingLive: 'Nothing is live. Each group shows its idle screen.',
@@ -129,6 +172,9 @@ export const strings = {
   logo: 'Logo',
   noLogoHint: 'Choose a logo in Screens › Groups first',
   blackAll: 'Black screen (all)',
+  clearText: 'Clear text',
+  clearTextShort: 'Clear text',
+  textX: 'Text ✕',
   blackOn: 'Black is ON — click to show',
 
   // Groups editor

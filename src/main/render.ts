@@ -34,6 +34,7 @@ export function outputRenders(settings: Settings, openIds: string[]): Map<string
       groupName: group?.name ?? null,
       audioTakes: owners.get(outputId) ?? [],
       content: group ? svc.groupLive(group.id).content : null,
+      text: group ? svc.groupLive(group.id).text : null,
       idle: { kind: group?.idle ?? 'black', media, interval: group?.idleInterval ?? 8 },
       logoUrl: settings.logo?.url,
       overlays: svc.getOverlays()
