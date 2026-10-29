@@ -149,7 +149,13 @@ export function ServicePage() {
         <ScreensColumn state={state} screens={screens} />
       </div>
       <div className="service-bottom">
-        <QuickPanel state={state} />
+        <QuickPanel
+          state={state}
+          onEditHotkeys={() => {
+            setLibrary({ kind: 'favorites' })
+            setLeftTab('library')
+          }}
+        />
       </div>
     </div>
   )

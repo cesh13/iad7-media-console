@@ -196,8 +196,18 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Buttons: Add to order, Show now.
 
 ### 5.6 Bottom: Hotkeys + Audio / Message / Stage tabs
-- **Hotkeys:** 8 buttons F1–F8 (logo, prayer background, offering video…).
-  One press = live now. Edited in Library › ★ Favorites.
+- **One slim bar (about 44 px), always visible.** From left to right:
+  hotkeys, music summary, and the Audio / Message / Stage buttons.
+- A button opens its **drawer** above the bar (max 300 px, closed by default).
+  A second click closes it. The drawer pushes the content up; it never covers
+  the Live panel or the preview. Esc does not close it (Esc clears the screens).
+- A **red dot** on Message or Stage while something from that tab is on a
+  screen (a lower-third message; a stage message or a running countdown).
+- **Hotkeys:** F1–F8 (logo, prayer background, offering video…). One press =
+  live now. Only keys with a favorite show, as small chips. "+" opens
+  Library › ★ Favorites, where hotkeys are edited.
+- **Music summary:** play/pause, track name, time, **Fade out 3 s**,
+  background volume.
 - **Audio tab:**
   - Background music player (playlist, shuffle, now playing, time bar).
   - Previous, pause, next, **Fade out 3 s**.

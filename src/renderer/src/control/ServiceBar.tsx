@@ -64,29 +64,32 @@ export function ServiceBar({ state }: { state: ServiceState }) {
   )
 }
 
-/** Hotkeys F1–F8 (SPEC 5.6): one press = live now. Edited in Library › ★ Favorites. */
-export function HotkeysBar({ state }: { state: ServiceState }) {
+/**
+ * Hotkeys F1–F8 (SPEC 5.6): one press = live now. Only keys that have a
+ * favorite show. "+" opens Library › ★ Favorites, where they are edited.
+ */
+export function HotkeysBar({ state, onEdit }: { state: ServiceState; onEdit: () => void }) {
+  const keys = state.favorites.filter((f) => f.hotkey).sort((a, b) => (a.hotkey ?? 0) - (b.hotkey ?? 0))
   return (
     <div className="hotkeys">
-      <span className="label-inline">{strings.hotkeysLabel}</span>
-      <div className="hotkey-grid">
-        {Array.from({ length: 8 }, (_, i) => i + 1).map((key) => {
-          const f = state.favorites.find((x) => x.hotkey === key)
-          const on = (f?.kind === 'logo' && state.overlays.logo) || (f?.kind === 'black' && state.overlays.black)
-          return (
-            <button
-              key={key}
-              className={on ? 'hotkey is-on' : 'hotkey'}
-              disabled={!f}
-              title={f?.path ?? f?.title}
-              onClick={() => void api.triggerHotkey(key)}
-            >
-              <span className="mono hotkey-key">F{key}</span>
-              <span className="hotkey-title">{f?.title ?? strings.emptyHotkey}</span>
-            </button>
-          )
-        })}
-      </div>
+      {keys.length === 0 && <span className="dim small">{strings.noHotkeys}</span>}
+      {keys.map((f) => {
+        const on = (f.kind === 'logo' && state.overlays.logo) || (f.kind === 'black' && state.overlays.black)
+        return (
+          <button
+            key={f.id}
+            className={on ? 'hotkey is-on' : 'hotkey'}
+            title={f.path ?? f.title}
+            onClick={() => void api.triggerHotkey(f.hotkey!)}
+          >
+            <span className="mono hotkey-key">F{f.hotkey}</span>
+            <span className="hotkey-title">{f.title}</span>
+          </button>
+        )
+      })}
+      <button className="btn btn-small btn-quiet hotkey-edit" title={strings.editHotkeys} onClick={onEdit}>
+        +
+      </button>
     </div>
   )
 }

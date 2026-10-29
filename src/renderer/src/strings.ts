@@ -73,8 +73,8 @@ export const strings = {
   elapsedHint: 'Time since the first item went live',
 
   // Hotkeys
-  hotkeysLabel: 'Hotkeys',
-  emptyHotkey: '[empty]',
+  noHotkeys: 'No hotkeys',
+  editHotkeys: 'Give favorites a hotkey F1–F8 (Library › ★ Favorites)',
 
   // Library (SPEC 5.2)
   libraryLabel: 'Library',
@@ -368,6 +368,7 @@ export const strings = {
   tabAudio: 'Audio',
   tabMessage: 'Message',
   tabStage: 'Stage',
+  tabOnScreen: 'Something from this tab is on a screen now',
   noMusic: 'No background music',
   playingBadge: 'PLAYING',
   duckedBadge: 'lower (video)',
