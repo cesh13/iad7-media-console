@@ -84,6 +84,8 @@
   --verse-size: 7cqh;
 }
 .verse-text {
+  /* Keep the line breaks of song stanzas. */
+  white-space: pre-line;
   font-size: var(--verse-size);
   line-height: 1.3;
   text-shadow: 0 0.2cqh 0.6cqh rgba(0, 0, 0, 0.6);

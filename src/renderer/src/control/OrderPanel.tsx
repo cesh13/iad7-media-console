@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react'
 import type { ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
+import { FolderBox } from './FolderBox'
 
 const api = window.mediaConsole
 const itemDragType = 'application/x-media-console-item'
@@ -41,9 +42,14 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
     >
       <div className="order-head">
         <h2 className="label">{strings.orderLabel}</h2>
-        <button className="btn btn-small" onClick={() => void api.pickFiles().then(showResult)}>
-          + {strings.addFiles}
-        </button>
+        <div className="button-row tight">
+          <button className="btn btn-small btn-quiet" title={strings.addFolderHint} onClick={() => void api.pickFolder()}>
+            + {strings.addFolder}
+          </button>
+          <button className="btn btn-small" onClick={() => void api.pickFiles().then(showResult)}>
+            + {strings.addFiles}
+          </button>
+        </div>
       </div>
       {items.length > 0 && (
         <div className="order-progress">
@@ -72,7 +78,8 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
 
       {/* Read the size of pictures and the length of videos once. */}
       {items
-        .filter((i) => i.url && i.type !== 'slides' && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
+        .flatMap((i) => (i.child ? [i.child] : [i]))
+        .filter((i) => i.url && (i.type === 'video' || i.type === 'image') && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
         .map((i) =>
           i.type === 'video' ? (
             <video
@@ -119,43 +126,63 @@ function OrderRow(props: {
   if (dragOver) classes.push('is-drag-over')
 
   return (
-    <div
-      className={classes.join(' ')}
-      draggable
-      onClick={onSelect}
-      onDoubleClick={() => void api.goLive(item.id)}
-      onDragStart={(e) => e.dataTransfer.setData(itemDragType, item.id)}
-      onDragOver={(e) => {
-        if (!e.dataTransfer.types.includes(itemDragType)) return
-        e.preventDefault()
-        setDragOver(true)
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        setDragOver(false)
-        const id = e.dataTransfer.getData(itemDragType)
-        if (!id) return
-        e.preventDefault()
-        e.stopPropagation()
-        void api.moveItem(id, index)
-      }}
-    >
-      <StatusMark item={item} isNext={isNext} />
-      <TypeIcon type={item.type} />
-      <span className="row-title">{item.title}</span>
-      <span className="row-meta mono">
-        {item.cache !== 'ready' && item.cache !== 'error' && strings.cacheStates(item)}
-        {item.cache === 'error' && (
-          <span className="text-live" title={item.cacheError}>
-            {strings.copyError}
-          </span>
-        )}
-        {item.cache === 'ready' && item.type === 'video' && formatTime(item.duration)}
-        {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
-        {item.type === 'bible' && item.bible && strings.verseCount(item.bible.to - item.bible.from + 1)}
-      </span>
-    </div>
+    <>
+      <div
+        className={classes.join(' ')}
+        draggable
+        onClick={onSelect}
+        onDoubleClick={() => void api.goLive(item.id)}
+        onDragStart={(e) => e.dataTransfer.setData(itemDragType, item.id)}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(itemDragType)) return
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          setDragOver(false)
+          const id = e.dataTransfer.getData(itemDragType)
+          if (!id) return
+          e.preventDefault()
+          e.stopPropagation()
+          void api.moveItem(id, index)
+        }}
+      >
+        <StatusMark item={item} isNext={isNext} />
+        <TypeIcon type={item.type} />
+        <span className="row-title">
+          {item.title}
+          {item.child && <span className="row-choice"> › {item.child.title}</span>}
+        </span>
+        <span className="row-meta mono">
+          {item.type === 'folder' && <FolderMeta item={item} />}
+          {item.cache !== 'ready' && item.cache !== 'error' && strings.cacheStates(item)}
+          {item.cache === 'error' && (
+            <span className="text-live" title={item.cacheError}>
+              {strings.copyError}
+            </span>
+          )}
+          {item.cache === 'ready' && item.type === 'video' && formatTime(item.duration)}
+          {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
+          {item.type === 'bible' && item.bible && strings.verseCount(item.bible.to - item.bible.from + 1)}
+          {item.type === 'song' && item.stanzas && strings.stanzaCount(item.stanzas.length)}
+        </span>
+      </div>
+      {item.type === 'folder' && selected && <FolderBox item={item} />}
+    </>
   )
+}
+
+/** Folder row: the chosen file state, or the number of files (and the index progress). */
+function FolderMeta({ item }: { item: ServiceItem }) {
+  const child = item.child
+  if (child && child.cache === 'error') return <span className="text-live" title={child.cacheError}>{strings.copyError}</span>
+  if (child && child.cache !== 'ready') return <>{strings.cacheStates(child)}</>
+  if (child?.type === 'slides') return <>{strings.slideCount(child.pageUrls?.length ?? 0)}</>
+  if (child?.type === 'video') return <>{formatTime(child.duration)}</>
+  const f = item.folder
+  if (f?.progress != null) return <>{strings.indexing(f.progress)}</>
+  return <>{strings.fileCount(f?.count ?? 0)}</>
 }
 
 function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
@@ -175,7 +202,17 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
   return (
     <span className="type-icon" title={strings.types[type]}>
-      {type === 'bible' ? (
+      {type === 'folder' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+        </svg>
+      ) : type === 'song' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M9 18V5l11-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="17" cy="16" r="3" />
+        </svg>
+      ) : type === 'bible' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
           <path d="M4 19V5" />

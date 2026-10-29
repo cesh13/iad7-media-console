@@ -244,7 +244,7 @@
 }
 .service-bottom {
   flex-shrink: 0;
-  height: 372px;
+  max-height: 372px;
   display: flex;
   border-top: 1px solid var(--border-panel);
 }
@@ -984,7 +984,7 @@
   color: var(--text);
 }
 .bible-body {
-  flex: 1;
+  height: 290px;
   min-height: 0;
   display: flex;
   gap: 14px;
@@ -1133,4 +1133,68 @@
 }
 .screen-chips {
   margin-bottom: 12px;
+}
+
+/* ---- Step 7: folder items ---- */
+.row-choice {
+  color: var(--preview);
+}
+.folder-box {
+  margin: 2px 0 6px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.folder-search {
+  width: 100%;
+  border-color: var(--preview);
+}
+/* Fixed height, scrolls inside (SPEC 5.2). */
+.folder-list {
+  height: 168px;
+  overflow-y: auto;
+  border: 1px solid var(--border-panel);
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+.folder-empty {
+  padding: 10px;
+}
+.folder-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-panel);
+  color: var(--text-3);
+  cursor: pointer;
+}
+.folder-entry.is-cursor {
+  background: var(--preview-tint);
+  color: var(--text);
+}
+.folder-entry.is-chosen .folder-title {
+  color: var(--ok);
+  font-weight: 600;
+}
+.folder-num {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-2);
+}
+.folder-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.folder-snippet {
+  font-size: 11px;
+  color: var(--label);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

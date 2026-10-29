@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
+import { byFileName, itemType } from './fileTypes'
+import { readTextFile } from './fileText'
+import { folderStatus, openFolderIndex } from './folderIndex'
 import { refLabel } from '../shared/bibleBooks'
 import type {
   AddFilesResult,
@@ -28,28 +31,6 @@ import { saveService } from './serviceStore'
 
 // The service order and the live state of each group. The main process owns
 // this state; windows only show it and send commands.
-
-export const typeByExtension: Record<string, ItemType> = {
-  '.mp4': 'video',
-  '.m4v': 'video',
-  '.mov': 'video',
-  '.webm': 'video',
-  '.mkv': 'video',
-  '.jpg': 'image',
-  '.jpeg': 'image',
-  '.png': 'image',
-  '.gif': 'image',
-  '.webp': 'image',
-  '.bmp': 'image',
-  '.pdf': 'slides',
-  '.pptx': 'slides',
-  '.ppt': 'slides',
-  '.ppsx': 'slides',
-  '.pps': 'slides',
-  '.odp': 'slides'
-}
-
-const ignoredNames = new Set(['thumbs.db', 'desktop.ini', '.ds_store'])
 
 let service: Service
 /** Live state by group id. */
@@ -103,6 +84,8 @@ export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
   if (type === 'slides') return { autoDone: true, autoAdvance: null, loop: false }
   if (type === 'bible') return bibleDefaults()
+  if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1 }
+  if (type === 'folder') return { autoDone: true }
   return { autoDone: true, fit: 'fit', autoNext: null }
 }
 
@@ -114,11 +97,22 @@ export function initService(loaded: Service): void {
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
     if (item.type === 'bible') continue // No file to copy.
-    // Copy again if the app stopped during a copy, or the cache was cleared.
-    const pagesMissing = item.type === 'slides' && !item.pageUrls?.length
-    if (item.cache !== 'ready' || !item.localCopyPath || !existsSync(item.localCopyPath) || pagesMissing) startCopy(item)
-    else if (item.type !== 'slides') item.url = mediaUrl(item.localCopyPath)
+    if (item.type === 'folder') {
+      openFolderIndex(item.path)
+      if (item.child) restoreItem(item.child)
+      continue
+    }
+    restoreItem(item)
   }
+}
+
+/** Copy again if the app stopped during a copy, or the cache was cleared. */
+function restoreItem(item: ServiceItem): void {
+  item.settings = { ...defaultSettings(item.type), ...item.settings }
+  if (item.status === 'live') item.status = 'pending'
+  const pagesMissing = item.type === 'slides' && !item.pageUrls?.length
+  if (item.cache !== 'ready' || !item.localCopyPath || !existsSync(item.localCopyPath) || pagesMissing) startCopy(item)
+  else if (item.type !== 'slides') item.url = mediaUrl(item.localCopyPath)
 }
 
 export function groupLive(groupId: string): GroupLive {
@@ -129,11 +123,38 @@ export function getOverlays(): Overlays {
   return overlays
 }
 
+/** An item of the order, or the chosen file of a folder item. */
 export function findItem(itemId: string): ServiceItem | undefined {
-  return service.items.find((i) => i.id === itemId)
+  for (const i of service.items) {
+    if (i.id === itemId) return i
+    if (i.child?.id === itemId) return i.child
+  }
+  return undefined
+}
+
+/** Position in the order. The chosen file of a folder has the position of its folder. */
+function orderIndex(itemId: string): number {
+  return service.items.findIndex((i) => i.id === itemId || i.child?.id === itemId)
+}
+
+/** What goes live for an order item: the item itself, or the chosen file of a folder. */
+function playable(item: ServiceItem): ServiceItem | undefined {
+  return item.type === 'folder' ? item.child : item
+}
+
+/** Set the status of an item; a chosen file also sets its folder. */
+function setStatus(itemId: string, status: ItemStatus): void {
+  for (const i of service.items) {
+    if (i.id === itemId) i.status = status
+    if (i.child?.id === itemId) {
+      i.child.status = status
+      i.status = status
+    }
+  }
 }
 
 export function serviceState(): ServiceState {
+  refreshFolders()
   const next = nextIndex()
   return {
     service,
@@ -150,32 +171,32 @@ export function serviceState(): ServiceState {
 
 // ---- Adding and changing items ----
 
-function itemType(path: string): ItemType | null {
-  const name = basename(path).toLowerCase()
-  if (ignoredNames.has(name) || name.startsWith('~$')) return null
-  return typeByExtension[extname(name)] ?? null
-}
-
-/** Sort by file name the way people expect: "2" before "10". */
-export function byFileName(a: string, b: string): number {
-  return basename(a).localeCompare(basename(b), undefined, { numeric: true, sensitivity: 'base' })
-}
+/** A dropped folder with more files than this becomes one searchable folder item. */
+const folderItemThreshold = 30
 
 /** Add files. A folder adds the files inside it (not subfolders), in file-name order. */
 export async function addFiles(paths: string[]): Promise<AddFilesResult> {
   const files: string[] = []
+  let folders = 0
   for (const p of [...paths].sort(byFileName)) {
     const info = await stat(p).catch(() => null)
     if (!info) continue
     if (info.isDirectory()) {
       const entries = await readdir(p, { withFileTypes: true })
-      files.push(...entries.filter((e) => e.isFile()).map((e) => join(p, e.name)).sort(byFileName))
+      const inside = entries.filter((e) => e.isFile()).map((e) => join(p, e.name)).sort(byFileName)
+      // A big folder (the hymnal) is one item with search; a small folder adds its files.
+      if (inside.filter((f) => itemType(f)).length > folderItemThreshold) {
+        addFolder(p)
+        folders++
+      } else {
+        files.push(...inside)
+      }
     } else {
       files.push(p)
     }
   }
 
-  const result: AddFilesResult = { added: 0, skipped: [] }
+  const result: AddFilesResult = { added: folders, skipped: [] }
   for (const path of files) {
     const type = itemType(path)
     if (!type) {
@@ -200,6 +221,58 @@ export async function addFiles(paths: string[]): Promise<AddFilesResult> {
   return result
 }
 
+/** A folder as one item: pick one file from it with a search (SPEC 5.2). */
+export function addFolder(folder: string): void {
+  service.items.push({
+    id: randomUUID(),
+    type: 'folder',
+    title: basename(folder),
+    path: folder,
+    cache: 'ready',
+    status: 'pending',
+    settings: defaultSettings('folder')
+  })
+  openFolderIndex(folder)
+  changed()
+}
+
+/** Choose the file of a folder item. It is copied (and converted) like any other item. */
+export function chooseInFolder(itemId: string, path: string): void {
+  const folder = findItem(itemId)
+  const type = itemType(path)
+  if (!folder || folder.type !== 'folder' || !type || type === 'folder') return
+  if (folder.folderChoice === path) return
+  const child: ServiceItem = {
+    id: randomUUID(),
+    type,
+    title: basename(path, extname(path)),
+    path,
+    cache: 'copying',
+    cacheProgress: 0,
+    status: 'pending',
+    settings: defaultSettings(type)
+  }
+  folder.folderChoice = path
+  folder.child = child
+  folder.status = 'pending'
+  startCopy(child)
+  changed()
+}
+
+/** Folder counts and index progress, for the order list. */
+function refreshFolders(): void {
+  for (const item of service.items) if (item.type === 'folder') item.folder = folderStatus(item.path)
+}
+
+/** Split song text into stanzas at empty lines. */
+function stanzas(text: string): string[] {
+  return text
+    .replace(/\r/g, '')
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 function startCopy(item: ServiceItem): void {
   item.cache = 'copying'
   item.cacheProgress = 0
@@ -212,7 +285,10 @@ function startCopy(item: ServiceItem): void {
   cacheFile(item.path, progress)
     .then(async (cached) => {
       item.localCopyPath = cached
-      if (item.type === 'slides') {
+      if (item.type === 'song') {
+        item.stanzas = stanzas(await readTextFile(cached))
+        item.url = mediaUrl(cached)
+      } else if (item.type === 'slides') {
         // .pptx: convert to PDF first. Then make one picture per page.
         let pdf = cached
         if (!cached.toLowerCase().endsWith('.pdf')) {
@@ -286,7 +362,11 @@ export function updateItem(
     for (const g of live.values()) if (g.content?.itemId === itemId) g.content.settings = item.settings
     // Bible text: make the screens again with the new settings, at the same verse.
     for (const g of live.values()) {
-      if (g.text?.itemId !== itemId || !item.bible) continue
+      if (g.text?.itemId !== itemId) continue
+      if (!item.bible) {
+        g.text.settings = item.settings
+        continue
+      }
       const verse = g.text.screens[g.text.index]?.verse
       g.text.settings = item.settings
       g.text.screens = buildScreens(item.bible, item.settings)
@@ -306,6 +386,8 @@ export function setDuration(itemId: string, seconds: number): void {
 // ---- Live ----
 
 function isReady(item: ServiceItem): boolean {
+  if (item.type === 'folder') return !!item.child && isReady(item.child)
+  if (item.type === 'song') return item.cache === 'ready' && !!item.stanzas?.length
   if (item.type === 'bible') return !!item.bible && listBibles().some((b) => b.id === item.bible!.bibleId)
   if (item.type === 'slides' && !item.pageUrls?.length) return false
   return item.cache === 'ready' && !!item.url
@@ -327,13 +409,10 @@ function groupsShowing(itemId: string): string[] {
 /** Items that were live and are not live in any group now get "done" (or "pending"). */
 function updateStatuses(before: Set<string>, markDone: boolean): void {
   const now = liveItemIds()
-  for (const id of now) {
-    const item = findItem(id)
-    if (item) item.status = 'live'
-  }
+  for (const id of now) setStatus(id, 'live')
   for (const id of before) {
     const item = findItem(id)
-    if (item && !now.has(id)) item.status = markDone && item.settings.autoDone ? 'done' : 'pending'
+    if (item && !now.has(id)) setStatus(id, markDone && item.settings.autoDone ? 'done' : 'pending')
   }
   // Forget playback of takes that no group shows.
   const takes = new Set([...live.values()].flatMap((g) => [g.content?.take, g.text?.take]))
@@ -373,7 +452,7 @@ function currentItemId(g: GroupLive): string | null {
 function liveIndex(): number {
   const g = referenceLive()
   const id = g ? currentItemId(g) : null
-  return id ? service.items.findIndex((i) => i.id === id) : -1
+  return id ? orderIndex(id) : -1
 }
 
 /**
@@ -400,9 +479,11 @@ export function goLive(itemId: string, t?: Target, page = 0): void {
 }
 
 function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
-  const item = findItem(itemId)
+  const found = findItem(itemId)
+  const item = found && playable(found)
   if (!item || !isReady(item) || groupIds.length === 0) return
-  if (item.type === 'bible') return showText(groupIds, item.id, item.bible!, item.settings, item.title)
+  if (item.type === 'bible') return showText(groupIds, item.id, buildScreens(item.bible!, item.settings), item.settings, item.title, item.bible)
+  if (item.type === 'song') return showText(groupIds, item.id, songScreens(item), item.settings, item.title)
   const before = liveItemIds()
   const t = ++take
   for (const id of groupIds) {
@@ -504,7 +585,7 @@ function advanceFrom(t: number): void {
   }
   if (!itemId) return
   const items = service.items
-  const from = items.findIndex((i) => i.id === itemId)
+  const from = orderIndex(itemId)
   const nextItem = items.slice(from + 1).find(isReady)
   if (nextItem) goLiveIn(groupIds, nextItem.id)
   else clearGroups(groupIds, true, 'both')
@@ -559,9 +640,16 @@ export function clearText(groupId?: string): void {
 
 // ---- Bible text ----
 
-/** Put Bible screens on the text layer of these groups. Full screen also removes the content. */
-function showText(groupIds: string[], itemId: string | null, ref: BibleRef, settings: ItemSettings, title: string, startVerse?: number): void {
-  const screens = buildScreens(ref, settings)
+/** Put text screens (Bible, song) on the text layer of these groups. Full screen also removes the content. */
+function showText(
+  groupIds: string[],
+  itemId: string | null,
+  screens: BibleScreen[],
+  settings: ItemSettings,
+  title: string,
+  ref?: BibleRef,
+  startVerse?: number
+): void {
   if (screens.length === 0 || groupIds.length === 0) return
   const before = liveItemIds()
   const t = ++take
@@ -571,7 +659,7 @@ function showText(groupIds: string[], itemId: string | null, ref: BibleRef, sett
     const g = groupLive(id)
     live.set(id, { content: settings.mode === 'lower' ? g.content : null, text: { ...text } })
   }
-  remember(ref)
+  if (ref) remember(ref)
   updateStatuses(before, true)
   changed()
 }
@@ -612,7 +700,14 @@ export function addBibleToOrder(ref: BibleRef): void {
 
 /** "Show now" in the Bible panel: live on the target, not added to the order. */
 export function showBibleNow(ref: BibleRef, startVerse?: number): void {
-  showText(targetGroupIds(), null, ref, bibleDefaults(), refLabel(ref), startVerse)
+  const settings = bibleDefaults()
+  showText(targetGroupIds(), null, buildScreens(ref, settings), settings, refLabel(ref), ref, startVerse)
+}
+
+/** One screen per stanza. */
+function songScreens(item: ServiceItem): BibleScreen[] {
+  const list = item.stanzas ?? []
+  return list.map((text, i) => ({ text, ref: item.title, label: `${i + 1}/${list.length}`, verse: i + 1 }))
 }
 
 /** Show the screen of one verse in the Bible text that is live in the target. */

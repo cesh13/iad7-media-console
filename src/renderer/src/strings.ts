@@ -44,7 +44,16 @@ export const strings = {
   copyError: 'error',
   typeVideo: 'Video',
   typeImage: 'Image',
-  types: { video: 'Video', image: 'Image', slides: 'Slides', bible: 'Bible' } as Record<ItemType, string>,
+  types: { video: 'Video', image: 'Image', slides: 'Slides', bible: 'Bible', song: 'Song', folder: 'Folder' } as Record<ItemType, string>,
+  stanzaCount: (n: number) => (n === 1 ? '1 stanza' : `${n} stanzas`),
+  fileCount: (n: number) => `${n} files`,
+  indexing: (fraction: number) => `indexing ${Math.round(fraction * 100)}%`,
+  addFolder: 'Add folder',
+  addFolderHint: 'Add a folder as one item with search (for example the hymnal)',
+  folderSearchPlaceholder: 'Number, title or words of the song',
+  folderNoResults: 'No files found.',
+  folderChooseHint: 'Choose a file in the folder: select the folder row in the order and search.',
+  fromFolder: (name: string) => `from folder ${name}`,
   verseCount: (n: number) => (n === 1 ? '1 verse' : `${n} verses`),
   slideCount: (n: number) => (n === 1 ? '1 slide' : `${n} slides`),
   cacheStates: (item: ServiceItem): string => {
@@ -141,6 +150,7 @@ export const strings = {
   modeLower: 'Lower third (over video)',
   secondVersion: 'Second version',
   none: 'None',
+  songTitle: 'Song title on screen',
   licenseNote: 'For bilingual services. Each version needs its own license, or must be public domain.',
 
   // Live panel

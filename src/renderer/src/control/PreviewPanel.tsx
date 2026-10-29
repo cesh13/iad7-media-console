@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentLayer, EndAction, ImageFit, ItemSettings, ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView, type PlaybackReport } from '../view/ScreenView'
-import { BiblePreview } from './BiblePreview'
+import { BiblePreview, SongPreview } from './BiblePreview'
 
 const api = window.mediaConsole
 
@@ -29,6 +29,27 @@ export function PreviewPanel({ state, item }: { state: ServiceState; item: Servi
       </section>
     )
   if (item.type === 'bible') return <BiblePreview key={item.id} state={state} item={item} />
+  // A folder shows its chosen file.
+  if (item.type === 'folder') {
+    if (!item.child)
+      return (
+        <section className="panel preview">
+          <div className="preview-head">
+            <h2 className="label">{strings.previewLabel}</h2>
+            <div className="preview-title">
+              <span className="selected-title">{item.title}</span>
+              <span className="dim mono">{strings.fileCount(item.folder?.count ?? 0)}</span>
+            </div>
+            <TargetSelect state={state} />
+          </div>
+          <div className="preview-box preview-empty">
+            <span className="dim">{strings.folderChooseHint}</span>
+          </div>
+        </section>
+      )
+    return <PreviewPanel state={state} item={item.child} />
+  }
+  if (item.type === 'song') return <SongPreview key={item.id} state={state} item={item} />
   return <ItemPreview key={item.id} state={state} item={item} />
 }
 

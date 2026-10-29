@@ -23,6 +23,7 @@ import {
 } from './outputWindows'
 import { loadPage, preloadPath } from './pages'
 import { handleMediaScheme, registerMediaScheme } from './protocol'
+import { onFolderIndexChanged, searchFolder } from './folderIndex'
 import { closePdfWindow } from './pdfPages'
 import { outputRenders } from './render'
 import * as svc from './service'
@@ -41,7 +42,7 @@ let settings: Settings
 let controlWindow: BrowserWindow | null = null
 
 const mediaExtensions = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
-const orderExtensions = [...mediaExtensions, 'pdf', 'pptx', 'ppt', 'ppsx', 'pps', 'odp']
+const orderExtensions = [...mediaExtensions, 'pdf', 'pptx', 'ppt', 'ppsx', 'pps', 'odp', 'txt']
 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
 
 registerMediaScheme()
@@ -187,6 +188,16 @@ function registerIpc(): void {
     return paths.length ? svc.addFiles(paths) : { added: 0, skipped: [] }
   })
   ipcMain.handle('service:addFiles', (_e, paths: string[]) => svc.addFiles(paths))
+  ipcMain.handle('service:pickFolder', async () => {
+    if (!controlWindow) return
+    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'] })
+    if (!result.canceled && result.filePaths[0]) svc.addFolder(result.filePaths[0])
+  })
+  ipcMain.handle('service:searchFolder', (_e, id: string, query: string) => {
+    const item = svc.findItem(id)
+    return item?.type === 'folder' ? searchFolder(item.path, query) : []
+  })
+  ipcMain.handle('service:chooseInFolder', (_e, id: string, path: string) => svc.chooseInFolder(id, path))
   ipcMain.handle('service:removeItem', (_e, id: string) => svc.removeItem(id))
   ipcMain.handle('service:retryCopy', (_e, id: string) => svc.retryCopy(id))
   ipcMain.handle('service:setDuration', (_e, id: string, seconds: number) => svc.setDuration(id, seconds))
@@ -285,6 +296,7 @@ if (!app.requestSingleInstanceLock()) {
     onTestWindowsChanged(sendScreensState)
     watchScreens()
     onOutputWindowLost(syncOutputs)
+    onFolderIndexChanged(() => sendServiceState())
     createControlWindow()
     syncOutputs()
   })

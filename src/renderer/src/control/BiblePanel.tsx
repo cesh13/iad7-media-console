@@ -44,7 +44,7 @@ export function BiblePanel({ state }: { state: ServiceState }) {
 
   // The Bible text live in the target, if it is this chapter.
   const liveText = liveTextOf(state)
-  const liveHere = liveText && liveText.ref.book === book && liveText.ref.chapter === chapter ? liveText : null
+  const liveHere = liveText?.ref && liveText.ref.book === book && liveText.ref.chapter === chapter ? liveText : null
   const liveVerse = liveHere?.screens[liveHere.index]?.verse
   const nextVerse = liveHere?.screens.slice(liveHere.index + 1).find((s) => s.verse !== liveVerse)?.verse
 
@@ -218,7 +218,7 @@ export function BiblePanel({ state }: { state: ServiceState }) {
         <div className="spacer" />
         {state.bibleHistory.length > 0 && <span className="label-inline">{strings.today}</span>}
         {state.bibleHistory.slice(0, 6).map((r) => {
-          const isLive = liveText && refLabel(liveText.ref) === refLabel(r)
+          const isLive = liveText?.ref && refLabel(liveText.ref) === refLabel(r)
           return (
             <button
               key={refLabel(r)}
@@ -317,10 +317,10 @@ export function BiblePanel({ state }: { state: ServiceState }) {
   )
 }
 
-/** The Bible text live in the target group (or the first group, for "all"). */
+/** The Bible text live in the target group (or the first group, for "all"). Songs have no passage. */
 function liveTextOf(state: ServiceState): TextLayer | null {
   const groups = state.target === 'all' ? state.groups : state.groups.filter((g) => g.config.id === state.target)
-  return groups.map((g) => g.live.text).find((t) => t) ?? null
+  return groups.map((g) => g.live.text).find((t) => t?.ref) ?? null
 }
 
 function BookGrid({ current, onPick }: { current: number; onPick: (n: number) => void }) {

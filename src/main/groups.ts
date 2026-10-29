@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
 import type { GroupConfig, MediaRef, Settings } from '../shared/types'
 import { cacheFile, mediaUrl } from './cache'
-import { typeByExtension } from './service'
+import { typeByExtension } from './fileTypes'
 import { newGroup, saveSettings } from './settings'
 
 // Group settings (screens per group, idle screen) and the church logo.

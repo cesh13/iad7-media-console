@@ -82,7 +82,7 @@ export interface TestInfo {
 // ---- Service order (SPEC section 4) ----
 
 /** Item types supported so far. More types come in later steps. */
-export type ItemType = 'video' | 'image' | 'slides' | 'bible'
+export type ItemType = 'video' | 'image' | 'slides' | 'bible' | 'song' | 'folder'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
@@ -209,6 +209,25 @@ export interface ServiceItem {
   pageTexts?: string[]
   /** Bible: the passage. */
   bible?: BibleRef
+  /** Song (.txt): the stanzas, one per screen. */
+  stanzas?: string[]
+  /** Folder: the chosen file, and that file as an item (copied and converted like any item). */
+  folderChoice?: string
+  child?: ServiceItem
+  /** Folder: number of files and index progress (0..1 while indexing, null when ready). */
+  folder?: { count: number; progress: number | null }
+}
+
+/** One file in a folder item (for example one hymn). */
+export interface FolderEntry {
+  path: string
+  name: string
+  /** The number at the start of the file name ("045 Santo.pptx" → 45). */
+  number: number | null
+  title: string
+  type: ItemType
+  /** The first line of text in the file. */
+  snippet: string
 }
 
 export interface Service {
@@ -250,7 +269,8 @@ export interface TextLayer {
   itemId: string | null
   take: number
   title: string
-  ref: BibleRef
+  /** Bible text only. */
+  ref?: BibleRef
   screens: BibleScreen[]
   /** The screen shown now. */
   index: number
@@ -344,6 +364,12 @@ export interface MediaConsoleApi {
   onServiceChanged(callback: (state: ServiceState) => void): () => void
   /** Show a file dialog and add the chosen files. */
   pickFiles(): Promise<AddFilesResult>
+  /** Show a folder dialog and add the folder as one searchable item (for example the hymnal). */
+  pickFolder(): Promise<void>
+  /** Search the files of a folder item: a number, a title, or words in the lyrics. */
+  searchFolder(itemId: string, query: string): Promise<FolderEntry[]>
+  /** Choose the file of a folder item that goes live. */
+  chooseInFolder(itemId: string, path: string): Promise<void>
   /** Add files dropped on the window. */
   addFiles(paths: string[]): Promise<AddFilesResult>
   /** Path of a dropped File (Electron no longer gives File.path). */
