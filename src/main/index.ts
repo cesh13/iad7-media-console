@@ -344,7 +344,9 @@ function registerIpc(): void {
   ipcMain.handle('shared:get', () => shared.sharedState())
   ipcMain.handle('shared:pick', async () => {
     if (!controlWindow) return
-    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'] })
+    // Open at the folder watched now, so changing it starts from there.
+    const current = shared.sharedState().root ?? undefined
+    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'], defaultPath: current })
     if (!result.canceled && result.filePaths[0]) setShared(result.filePaths[0])
   })
   ipcMain.handle('shared:set', (_e, path: string | null) => setShared(path))

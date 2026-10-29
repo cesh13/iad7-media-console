@@ -89,8 +89,9 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
           />
         ))}
         {dropActive && <div className="drop-hint">{strings.dropHere}</div>}
-        <SharedSection state={state} />
       </div>
+      {/* Fixed at the bottom of the column, under the order list. */}
+      <SharedSection state={state} />
 
       {/* Read the size of pictures and the length of videos once. */}
       {items

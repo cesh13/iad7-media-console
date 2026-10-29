@@ -448,7 +448,8 @@ export interface SharedEntry {
 
 export interface SharedState {
   root: string | null
-  status: 'off' | 'watching' | 'unreachable'
+  /** scanning: the first look at the folder. tooBig: too many media files, not watched. */
+  status: 'off' | 'scanning' | 'watching' | 'unreachable' | 'tooBig'
   error?: string
   entries: SharedEntry[]
 }

@@ -1392,9 +1392,13 @@
 }
 
 /* ---- Step 8: shared folder ---- */
+/* Fixed at the bottom of the left column. Its file list scrolls on its own,
+   so it never takes more than about half of the column. */
 .shared {
-  margin-top: 14px;
-  padding-top: 10px;
+  flex-shrink: 0;
+  max-height: 50%;
+  min-height: 0;
+  padding: 10px 14px 12px;
   border-top: 1px solid var(--border-panel);
   display: flex;
   flex-direction: column;
@@ -1450,12 +1454,21 @@
   height: 7px;
   flex-shrink: 0;
 }
+/* Only the file list gets smaller when the section is full. */
+.shared > * {
+  flex-shrink: 0;
+}
+.shared > .shared-list {
+  flex-shrink: 1;
+}
 .shared-root {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .shared-list {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1px;

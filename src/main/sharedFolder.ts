@@ -18,6 +18,16 @@ import { prepareFile } from './prepare'
 /** A folder is "ready" when nothing inside changed for this long. */
 const quietMs = 5000
 const retryMs = 15000
+/** A file counts only when its size did not change for this long (copy finished). */
+const stableMs = 3000
+/**
+ * More media files than this: it is not a shared folder for the service (for
+ * example someone chose Documents). Stop, so the app does not copy all of it
+ * to the cache.
+ */
+const maxFiles = 1000
+/** Folders that never hold service files. Folders that start with "." are skipped too (.git). */
+const skippedDirs = new Set(['node_modules', '$recycle.bin', 'system volume information'])
 
 let root: string | null = null
 let watcher: FSWatcher | null = null
@@ -30,6 +40,9 @@ const lastChange = new Map<string, number>()
 let known = new Set<string>()
 const queue: string[] = []
 let preparing = false
+/** True during the first look at the folder. Files are copied only after it. */
+let scanning = false
+let fileCount = 0
 let retryTimer: NodeJS.Timeout | null = null
 let quietTimer: NodeJS.Timeout | null = null
 let notifyTimer: NodeJS.Timeout | null = null
@@ -97,7 +110,7 @@ function isQuiet(r: string): boolean {
 
 /** Copy and convert one file at a time, so the network and the computer stay free. */
 async function runQueue(): Promise<void> {
-  if (preparing) return
+  if (preparing || scanning) return
   preparing = true
   while (queue.length) {
     const r = queue.shift()!
@@ -122,10 +135,15 @@ async function runQueue(): Promise<void> {
 }
 
 function addEntry(path: string, dir: boolean, mtime?: number): void {
+  if (status === 'tooBig') return
   const r = rel(path)
   if (!r || r.startsWith('..')) return
   const type = dir ? null : itemType(path)
   if (!dir && !type) return // Thumbs.db, desktop.ini, ~$ files, unknown types.
+  if (!dir && !entries.has(r) && ++fileCount > maxFiles) {
+    stopTooBig()
+    return
+  }
   entries.set(r, {
     rel: r,
     path,
@@ -149,7 +167,11 @@ function addEntry(path: string, dir: boolean, mtime?: number): void {
 function removeEntry(path: string): void {
   const r = rel(path)
   // Rename or move = delete + new. Items already in the order are not touched.
-  for (const key of [...entries.keys()]) if (key === r || key.startsWith(`${r}/`)) entries.delete(key)
+  for (const [key, e] of [...entries]) {
+    if (key !== r && !key.startsWith(`${r}/`)) continue
+    entries.delete(key)
+    if (!e.dir) fileCount--
+  }
   touch(r)
   changed()
 }
@@ -161,9 +183,31 @@ function stopWatcher(): void {
   retryTimer = null
 }
 
+/** The folder has too many media files: stop watching and copy nothing more. */
+function stopTooBig(): void {
+  stopWatcher()
+  status = 'tooBig'
+  error = undefined
+  scanning = false
+  entries.clear()
+  queue.length = 0
+  changed()
+}
+
+/** True for folders and files the watcher does not look at. */
+function isSkipped(path: string, stats?: { isFile(): boolean }): boolean {
+  if (path === root) return false
+  // Files the app cannot show (code, documents, …) are not even polled.
+  if (stats?.isFile()) return !itemType(path)
+  const name = basename(path).toLowerCase()
+  return name.startsWith('.') || name.startsWith('~$') || skippedDirs.has(name) || name === 'thumbs.db' || name === 'desktop.ini'
+}
+
 async function startWatcher(): Promise<void> {
   stopWatcher()
   entries.clear()
+  queue.length = 0
+  fileCount = 0
   if (!root) return
   const reachable = await stat(root)
     .then((s) => s.isDirectory())
@@ -175,27 +219,38 @@ async function startWatcher(): Promise<void> {
     retryTimer = setTimeout(() => void startWatcher(), retryMs)
     return
   }
-  status = 'watching'
+  status = 'scanning'
   error = undefined
+  scanning = true
   // Network folders do not send change events: poll them.
-  watcher = watch(root, {
+  const w = watch(root, {
     depth: 3,
     usePolling: root.startsWith('\\\\'),
     interval: 2000,
     binaryInterval: 3000,
     // A file counts only when its size stopped changing (copy finished).
-    awaitWriteFinish: { stabilityThreshold: 3000, pollInterval: 500 },
-    ignored: (path) => {
-      const name = basename(path).toLowerCase()
-      return name === 'thumbs.db' || name === 'desktop.ini' || name === '.ds_store' || name.startsWith('~$')
-    }
+    awaitWriteFinish: { stabilityThreshold: stableMs, pollInterval: 500 },
+    ignored: isSkipped
   })
-  watcher.on('add', (p, s) => addEntry(p, false, s?.mtimeMs))
-  watcher.on('change', (p, s) => addEntry(p, false, s?.mtimeMs))
-  watcher.on('addDir', (p) => addEntry(p, true))
-  watcher.on('unlink', removeEntry)
-  watcher.on('unlinkDir', removeEntry)
-  watcher.on('error', (err) => {
+  watcher = w
+  w.on('ready', () => {
+    // The files found in the first look arrive a little later (awaitWriteFinish).
+    // Start copying only when they are all in, so a folder that is too big is
+    // stopped before anything is copied.
+    setTimeout(() => {
+      if (watcher !== w || status === 'tooBig') return
+      scanning = false
+      status = 'watching'
+      changed()
+      void runQueue()
+    }, stableMs + 1000)
+  })
+  w.on('add', (p, s) => addEntry(p, false, s?.mtimeMs))
+  w.on('change', (p, s) => addEntry(p, false, s?.mtimeMs))
+  w.on('addDir', (p) => addEntry(p, true))
+  w.on('unlink', removeEntry)
+  w.on('unlinkDir', removeEntry)
+  w.on('error', (err) => {
     // The share went away (network, other computer off): try again later.
     status = 'unreachable'
     error = err instanceof Error ? err.message : String(err)
@@ -208,13 +263,21 @@ async function startWatcher(): Promise<void> {
 
 export function setSharedFolder(path: string | null): void {
   root = path?.trim() || null
-  status = root ? 'watching' : 'off'
+  status = root ? 'scanning' : 'off'
   loadKnown()
   void startWatcher()
 }
 
 export function sharedState(): SharedState {
-  const list = [...entries.values()].sort((a, b) => (a.dir === b.dir ? byFileName(a.name, b.name) : a.dir ? -1 : 1))
+  // Show only folders that have a media file somewhere inside.
+  const withFiles = new Set<string>()
+  for (const e of entries.values()) {
+    if (e.dir) continue
+    for (let p = e.parent; p !== '' && !withFiles.has(p); p = parentOf(p)) withFiles.add(p)
+  }
+  const list = [...entries.values()]
+    .filter((e) => !e.dir || withFiles.has(e.rel))
+    .sort((a, b) => (a.dir === b.dir ? byFileName(a.name, b.name) : a.dir ? -1 : 1))
   return { root, status, error, entries: list }
 }
 

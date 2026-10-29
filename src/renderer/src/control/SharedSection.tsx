@@ -10,6 +10,23 @@ const api = window.mediaConsole
  * that other people put on the network share. New files have a dot.
  * Subfolders open in place; "All" adds all their files in file-name order.
  */
+const statusLook: Record<SharedState['status'], { css: string; dot: string; label: string }> = {
+  off: { css: '', dot: 'dot-none', label: '' },
+  scanning: { css: 'dim', dot: 'dot-warn', label: strings.scanning },
+  watching: { css: 'ok', dot: 'dot-ok', label: strings.watching },
+  unreachable: { css: 'bad', dot: 'dot-live', label: strings.unreachable },
+  tooBig: { css: 'bad', dot: 'dot-live', label: strings.tooBig }
+}
+
+/** The text under the folder path when no file is listed. */
+const emptyText: Record<SharedState['status'], string> = {
+  off: '',
+  scanning: strings.sharedScanning,
+  watching: strings.sharedEmpty,
+  unreachable: strings.sharedRetry,
+  tooBig: strings.sharedTooBig
+}
+
 export function SharedSection({ state }: { state: ServiceState }) {
   const [shared, setShared] = useState<SharedState | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
@@ -105,9 +122,9 @@ export function SharedSection({ state }: { state: ServiceState }) {
       <div className="shared-head">
         <span className="label">{strings.sharedLabel}</span>
         {newCount > 0 && <span className="badge-new">{strings.newCount(newCount)}</span>}
-        <span className={shared.status === 'watching' ? 'shared-status ok' : 'shared-status bad'} title={shared.error}>
-          <span className={shared.status === 'watching' ? 'dot dot-ok' : 'dot dot-live'} />
-          {shared.status === 'watching' ? strings.watching : strings.unreachable}
+        <span className={`shared-status ${statusLook[shared.status].css}`} title={shared.error}>
+          <span className={`dot ${statusLook[shared.status].dot}`} />
+          {statusLook[shared.status].label}
         </span>
         <div className="spacer" />
         {newCount > 0 && (
@@ -115,13 +132,13 @@ export function SharedSection({ state }: { state: ServiceState }) {
             {strings.markSeen}
           </button>
         )}
-        <button className="btn btn-small btn-quiet" title={strings.stopWatching} onClick={() => void api.setSharedFolder(null)}>
-          ✕
+        <button className="btn btn-small btn-quiet" title={strings.changeFolderHint} onClick={() => void api.pickSharedFolder()}>
+          {strings.changeFolder}
         </button>
       </div>
       <div className="mono dim small shared-root">{shared.root}</div>
       <div className="shared-list">
-        {shared.entries.length === 0 && <p className="dim small">{shared.status === 'watching' ? strings.sharedEmpty : strings.sharedRetry}</p>}
+        {shared.entries.length === 0 && <p className="dim small">{emptyText[shared.status]}</p>}
         {renderList('', 0)}
       </div>
     </div>

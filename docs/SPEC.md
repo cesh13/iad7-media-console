@@ -131,8 +131,13 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   `folderChoice`. When a service is copied, the folder stays and the choice is
   cleared.
 
-**Shared folder section (after the "Culto" section)**
+**Shared folder section (fixed at the bottom of the Order tab)**
+- Stays at the bottom while the order list scrolls above it. Its own file list
+  scrolls, so it takes at most half of the column.
 - Watches a network folder, for example `\\MEDIA-PC\Compartida`.
+- **Change…** in the header opens a folder dialog (at the current folder) to
+  watch another folder. There is no "stop watching" button: the share is
+  always watched once it is set.
 - Shows files and subfolders. New items have a dot and a "N NEW" count.
 - Subfolders open in place (option 1) and have an **All** button that adds all
   their files to the order in file-name order (option 2).
@@ -142,6 +147,14 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
     and a `depth` limit (3).
   - A folder is "ready" only when no file inside it changed for a few seconds.
   - Ignore `Thumbs.db`, `desktop.ini`, `.DS_Store`, files that start with `~$`.
+  - Skip folders that start with "." (`.git`), `node_modules`, `$RECYCLE.BIN`
+    and `System Volume Information`. Files of types the app cannot show are not
+    watched at all.
+  - First look at the folder: the status says "Looking…" and nothing is copied
+    until it ends.
+  - More than 1000 media files: stop watching, copy nothing, and say "Too many
+    files" (someone chose a big folder such as Documents by mistake).
+  - Show only subfolders that have a media file inside.
   - Copy each file to a local cache before playback.
   - Start .pptx → PDF conversion immediately.
   - Rename/move = delete + new. Do not remove items already in the order.
