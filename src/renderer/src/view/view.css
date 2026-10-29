@@ -105,3 +105,155 @@
   letter-spacing: 0.05em;
   color: #c9d6e6;
 }
+
+/* Countdown item. */
+.countdown-layer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+.countdown-above {
+  font-size: 7cqh;
+  font-weight: 500;
+  color: #d6dbe1;
+}
+.countdown-time {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 30cqh;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/* Stage screen (SPEC 7). Sizes follow the screen box, like the text layer. */
+.stage {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  background: #0a0b0d;
+  color: #fff;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+.stage-message {
+  padding: 2cqh 3cqw;
+  background: #e2b35b;
+  color: #111;
+  font-size: 7cqh;
+  font-weight: 700;
+  text-align: center;
+}
+.stage-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 2cqw;
+  padding: 2.5cqh 2.5cqw;
+}
+.stage-left {
+  flex: 1.5;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5cqh;
+}
+.stage-mirror {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 62cqh;
+  border: 0.3cqh solid #2a2e35;
+  border-radius: 1cqh;
+  overflow: hidden;
+}
+.stage-now {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5cqw;
+  min-width: 0;
+}
+.stage-label {
+  font-size: 2.8cqh;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #868d97;
+}
+.stage-now-title {
+  font-size: 5cqh;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stage-detail {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 4cqh;
+  color: #9aa0a8;
+}
+.stage-notes {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.5cqh 1.5cqw;
+  background: #16191d;
+  border-radius: 1cqh;
+  font-size: 3.6cqh;
+  line-height: 1.35;
+  color: #e8e6e1;
+  white-space: pre-line;
+}
+.stage-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5cqh;
+}
+.stage-clock {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 22cqh;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+}
+.stage-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5cqh 1cqw;
+  border-radius: 1cqh;
+  background: #16191d;
+}
+.stage-timer-time {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 14cqh;
+  font-weight: 500;
+  line-height: 1.05;
+}
+.stage-timer.is-warn {
+  background: #3a2e14;
+}
+.stage-timer.is-warn .stage-timer-time {
+  color: #e2b35b;
+}
+.stage-timer.is-over {
+  background: #2a1517;
+}
+.stage-timer.is-over .stage-timer-time {
+  color: #ff5a5f;
+}
+.stage-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqh;
+  margin-top: auto;
+}
+.stage-next-title {
+  font-size: 5cqh;
+  font-weight: 600;
+  color: #5ba4ff;
+}

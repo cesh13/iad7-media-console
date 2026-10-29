@@ -51,6 +51,7 @@ export function PreviewPanel({ state, item }: { state: ServiceState; item: Servi
     return <PreviewPanel state={state} item={item.child} />
   }
   if (item.type === 'song') return <SongPreview key={item.id} state={state} item={item} />
+  if (item.type === 'countdown') return <CountdownPreview key={item.id} state={state} item={item} />
   return <ItemPreview key={item.id} state={state} item={item} />
 }
 
@@ -389,6 +390,122 @@ function VideoAudioOptions({ item, set }: { item: ServiceItem; set: (s: Partial<
         {strings.stopMusic}
       </label>
     </div>
+  )
+}
+
+// ---- Countdown ----
+
+function CountdownPreview({ state, item }: { state: ServiceState; item: ServiceItem }) {
+  const s = item.settings
+  const set = (settings: Partial<ItemSettings>) => void api.updateItem(item.id, { settings })
+  const [title, setTitle] = useState(item.title)
+  const [minutes, setMinutes] = useState(String(Math.floor((s.countdownSeconds ?? 300) / 60)))
+  const [secs, setSecs] = useState(String((s.countdownSeconds ?? 300) % 60))
+  // The preview counts from the full time and does not move.
+  const content: ContentLayer = {
+    itemId: item.id,
+    type: 'countdown',
+    url: '',
+    settings: s,
+    take: -1,
+    playing: false,
+    endsAt: Date.now() + (s.countdownMode === 'until' ? 0 : (s.countdownSeconds ?? 300) * 1000)
+  }
+  const saveDuration = (m: string, sec: string) => set({ countdownSeconds: Math.max(0, Number(m) * 60 + Number(sec)) })
+
+  return (
+    <section className="panel preview">
+      <div className="preview-head">
+        <h2 className="label">{strings.previewLabel}</h2>
+        <div className="preview-title">
+          <input
+            className="input title-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => title.trim() && title !== item.title && void api.updateItem(item.id, { title })}
+          />
+        </div>
+        <TargetSelect state={state} />
+        <button className="btn btn-live" onClick={() => void api.goLive(item.id)}>
+          {strings.goLive} ⏎
+        </button>
+      </div>
+      <div className="preview-box">
+        <ScreenView content={content} idle={blackIdle} overlays={noOverlays} />
+      </div>
+      <div className="option-grid">
+        <div className="option">
+          <span className="label-inline">{strings.countdownMode}</span>
+          <div className="chips">
+            <button className={s.countdownMode !== 'until' ? 'chip is-on' : 'chip'} onClick={() => set({ countdownMode: 'duration' })}>
+              {strings.countdownDuration}
+            </button>
+            <button className={s.countdownMode === 'until' ? 'chip is-on' : 'chip'} onClick={() => set({ countdownMode: 'until' })}>
+              {strings.countdownUntil}
+            </button>
+          </div>
+          {s.countdownMode === 'until' ? (
+            <input className="input input-num" type="time" value={s.untilTime ?? ''} onChange={(e) => set({ untilTime: e.target.value })} />
+          ) : (
+            <div className="button-row tight">
+              <input
+                className="input input-num"
+                type="number"
+                min={0}
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                onBlur={() => saveDuration(minutes, secs)}
+              />
+              <span className="dim small">{strings.minutes}</span>
+              <input
+                className="input input-num"
+                type="number"
+                min={0}
+                max={59}
+                value={secs}
+                onChange={(e) => setSecs(e.target.value)}
+                onBlur={() => saveDuration(minutes, secs)}
+              />
+              <span className="dim small">s</span>
+            </div>
+          )}
+        </div>
+        <div className="option">
+          <span className="label-inline">{strings.textAbove}</span>
+          <TextSetting value={s.textAbove ?? ''} placeholder={strings.textAbovePlaceholder} onSave={(v) => set({ textAbove: v })} />
+        </div>
+        <div className="option">
+          <span className="label-inline">{strings.atZero}</span>
+          <div className="chips">
+            {(['next', 'logo', 'stay'] as const).map((a) => (
+              <button key={a} className={(s.atZero ?? 'next') === a ? 'chip is-on' : 'chip'} onClick={() => set({ atZero: a })}>
+                {strings.atZeroActions[a]}
+              </button>
+            ))}
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={!!s.showOnStage} onChange={(e) => set({ showOnStage: e.target.checked })} />
+            {strings.showOnStage}
+          </label>
+        </div>
+      </div>
+      <NotesAndStatus item={item} />
+    </section>
+  )
+}
+
+/** A text option that is saved when the field loses focus. */
+function TextSetting({ value, placeholder, onSave }: { value: string; placeholder: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <input
+      className="input"
+      value={text}
+      placeholder={placeholder}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text !== value && onSave(text)}
+    />
   )
 }
 

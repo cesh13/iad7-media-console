@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
 import { AudioTab } from './AudioTab'
+import { MessageTab, StageTab } from './StageTab'
 
 type Tab = 'audio' | 'message' | 'stage'
 
 /** Bottom right: Audio / Message / Stage tabs (SPEC 5.6). */
-export function QuickPanel() {
+export function QuickPanel({ state }: { state: ServiceState }) {
   const [tab, setTab] = useState<Tab>('audio')
   const tabs: [Tab, string][] = [
     ['audio', strings.tabAudio],
@@ -23,7 +25,8 @@ export function QuickPanel() {
       </nav>
       <div className="quick-body">
         {tab === 'audio' && <AudioTab />}
-        {tab !== 'audio' && <p className="help">{strings.comingSoon}</p>}
+        {tab === 'message' && <MessageTab state={state} />}
+        {tab === 'stage' && <StageTab state={state} />}
       </div>
     </section>
   )

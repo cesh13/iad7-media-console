@@ -44,6 +44,9 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
       <div className="order-head">
         <h2 className="label">{strings.orderLabel}</h2>
         <div className="button-row tight">
+          <button className="btn btn-small btn-quiet" onClick={() => void api.addCountdown()}>
+            + {strings.addCountdown}
+          </button>
           <button className="btn btn-small btn-quiet" title={strings.addFolderHint} onClick={() => void api.pickFolder()}>
             + {strings.addFolder}
           </button>
@@ -176,6 +179,8 @@ function OrderRow(props: {
           {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
           {item.type === 'bible' && item.bible && strings.verseCount(item.bible.to - item.bible.from + 1)}
           {item.type === 'song' && item.stanzas && strings.stanzaCount(item.stanzas.length)}
+        {item.type === 'countdown' &&
+          (item.settings.countdownMode === 'until' ? `→ ${item.settings.untilTime || '--:--'}` : formatTime(item.settings.countdownSeconds))}
         </span>
       </div>
       {item.type === 'folder' && selected && <FolderBox item={item} />}
@@ -212,7 +217,12 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
   return (
     <span className="type-icon" title={strings.types[type]}>
-      {type === 'audio' ? (
+      {type === 'countdown' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2 2M9 2h6" />
+        </svg>
+      ) : type === 'audio' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M4 9v6h4l5 4V5L8 9z" />
           <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />

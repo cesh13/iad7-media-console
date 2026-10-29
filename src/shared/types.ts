@@ -48,6 +48,18 @@ export interface GroupConfig {
   idleMedia: MediaRef[]
   /** Seconds each image shows in an idle loop. */
   idleInterval: number
+  /**
+   * Stage view (SPEC 7): the screens show clock, timer, now, next, notes and
+   * messages for the people on the platform, with a copy of what the audience sees.
+   */
+  stageView?: boolean
+}
+
+/** A lower-third message the team saved (name and role, notices). */
+export interface SavedMessage {
+  id: string
+  line1: string
+  line2: string
 }
 
 export interface Settings {
@@ -58,6 +70,32 @@ export interface Settings {
   /** The watched shared folder, for example \\MEDIA-PC\Compartida. */
   sharedFolder?: string
   audio?: AudioSettings
+  messages?: SavedMessage[]
+}
+
+// ---- Stage (SPEC 7) ----
+
+/** The participant countdown ("Sermón 30:00"). */
+export interface StageTimer {
+  label: string
+  /** Seconds set for the timer. */
+  duration: number
+  running: boolean
+  /** While running: the time (ms) when it reaches 0:00. */
+  endsAt: number | null
+  /** While stopped: seconds left (negative = over time). */
+  remaining: number
+}
+
+export interface StageRender {
+  timer: StageTimer
+  /** A countdown item that is live and set to "also show on Stage". */
+  countdown: { label: string; endsAt: number } | null
+  message: string | null
+  now: { title: string; notes?: string; detail?: string } | null
+  next: { title: string } | null
+  /** What the audience sees now (the main group). */
+  mirror: { content: ContentLayer | null; text: TextLayer | null; idle: OutputRender['idle'] }
 }
 
 // ---- Audio (SPEC 5.6) ----
@@ -124,7 +162,7 @@ export interface TestInfo {
 // ---- Service order (SPEC section 4) ----
 
 /** Item types supported so far. More types come in later steps. */
-export type ItemType = 'video' | 'image' | 'slides' | 'bible' | 'song' | 'folder' | 'audio'
+export type ItemType = 'video' | 'image' | 'slides' | 'bible' | 'song' | 'folder' | 'audio' | 'countdown'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
@@ -176,6 +214,18 @@ export interface ItemSettings {
   mode?: 'full' | 'lower'
   /** Show the same verses in a second version (bilingual services). */
   secondBibleId?: string | null
+  // Countdown (SPEC 6)
+  /** Count a duration, or count to a clock time. */
+  countdownMode?: 'duration' | 'until'
+  /** Seconds, for "duration". */
+  countdownSeconds?: number
+  /** "HH:MM", for "until". */
+  untilTime?: string
+  /** Text above the time, for example "El culto inicia en". */
+  textAbove?: string
+  /** At 0:00: go to the next item, show the logo, or stay at 0:00. */
+  atZero?: 'next' | 'logo' | 'stay'
+  showOnStage?: boolean
 }
 
 // ---- Bible ----
@@ -336,6 +386,8 @@ export interface ContentLayer {
   seekId?: number
   /** The video ended and the end action is "black" or "hold". */
   ended?: boolean
+  /** Countdown: the time (ms) when it reaches 0:00. */
+  endsAt?: number
 }
 
 /** Text over everything else of the group (Bible verses now; messages later). */
@@ -378,6 +430,8 @@ export interface Overlays {
 export interface GroupView {
   config: GroupConfig
   live: GroupLive
+  /** Groups with stage view: what their screens show. */
+  stage?: StageRender
 }
 
 /** Everything the control window shows about the service. */
@@ -393,6 +447,9 @@ export interface ServiceState {
   bibles: BibleVersion[]
   /** Bible passages shown in this service ("Today" chips). */
   bibleHistory: BibleRef[]
+  stageTimer: StageTimer
+  stageMessage: string | null
+  messages: SavedMessage[]
   logoUrl?: string
 }
 
@@ -416,6 +473,8 @@ export interface OutputRender {
   idle: { kind: IdleKind; media: { type: 'image' | 'video'; url: string }[]; interval: number }
   logoUrl?: string
   overlays: Overlays
+  /** Groups with stage view: the stage layout instead of the normal picture. */
+  stage?: StageRender
 }
 
 export interface MediaConsoleApi {
@@ -429,7 +488,7 @@ export interface MediaConsoleApi {
   onTestInfo(callback: (info: TestInfo) => void): () => void
   addGroup(name: string): Promise<void>
   removeGroup(groupId: string): Promise<void>
-  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval'>>): Promise<void>
+  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView'>>): Promise<void>
   /** Put an output in a group (null: no group). An output is in one group at most. */
   assignOutput(outputId: string, groupId: string | null): Promise<void>
   /** Show a file dialog and set the group's idle files. */
@@ -458,7 +517,10 @@ export interface MediaConsoleApi {
   setDuration(itemId: string, seconds: number): Promise<void>
   moveItem(itemId: string, toIndex: number): Promise<void>
   setItemStatus(itemId: string, status: ItemStatus): Promise<void>
-  updateItem(itemId: string, change: { notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }): Promise<void>
+  updateItem(
+    itemId: string,
+    change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
+  ): Promise<void>
 
   // Shared folder
   getShared(): Promise<SharedState>
@@ -489,6 +551,20 @@ export interface MediaConsoleApi {
   setOverlay(name: keyof Overlays, on: boolean): Promise<void>
   /** Remove the text layer of the target, of one group, or of all groups ("Clear text"). */
   clearText(groupId?: string | 'all'): Promise<void>
+
+  // Stage and messages
+  stageTimerSet(label: string, seconds: number): Promise<void>
+  stageTimerStart(): Promise<void>
+  stageTimerPause(): Promise<void>
+  stageTimerReset(): Promise<void>
+  /** A message only for the Stage screens (null: remove it). */
+  stageMessage(text: string | null): Promise<void>
+  /** A lower-third message on a group (or all screens). */
+  showMessage(line1: string, line2: string, target: Target): Promise<void>
+  saveMessage(line1: string, line2: string): Promise<void>
+  deleteMessage(id: string): Promise<void>
+  /** Add a countdown item to the order (5:00). */
+  addCountdown(): Promise<void>
 
   // Bible
   /** Show a file dialog and import a Bible file. Returns an error text, or null. */

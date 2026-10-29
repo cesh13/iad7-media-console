@@ -1,6 +1,7 @@
 import type { GroupView, ScreensState, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView } from '../view/ScreenView'
+import { StageView } from '../view/StageView'
 import { useAudioState } from './AudioTab'
 import { TypeIcon } from './OrderPanel'
 
@@ -97,20 +98,24 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
         </button>
       </div>
       <div className="mini">
-        <ScreenView
-          content={content}
-          text={live.text}
-          idle={{
-            kind: config.idle,
-            media: config.idleMedia
-              .filter((m) => m.url && m.type !== 'audio')
-              .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! })),
-            interval: config.idleInterval
-          }}
-          logoUrl={state.logoUrl}
-          overlays={state.overlays}
-          syncTime={playback?.currentTime}
-        />
+        {group.stage ? (
+          <StageView stage={group.stage} />
+        ) : (
+          <ScreenView
+            content={content}
+            text={live.text}
+            idle={{
+              kind: config.idle,
+              media: config.idleMedia
+                .filter((m) => m.url && m.type !== 'audio')
+                .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! })),
+              interval: config.idleInterval
+            }}
+            logoUrl={state.logoUrl}
+            overlays={state.overlays}
+            syncTime={playback?.currentTime}
+          />
+        )}
       </div>
       {content && item ? (
         <div className="group-now">

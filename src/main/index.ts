@@ -8,6 +8,7 @@ import type {
   Overlays,
   PlaybackInfo,
   ScreensState,
+  ServiceState,
   Settings,
   Target
 } from '../shared/types'
@@ -27,6 +28,7 @@ import { handleMediaScheme, registerMediaScheme } from './protocol'
 import { onFolderIndexChanged, searchFolder } from './folderIndex'
 import { closePdfWindow } from './pdfPages'
 import * as shared from './sharedFolder'
+import * as stage from './stage'
 import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
@@ -64,8 +66,20 @@ function sendScreensState(): void {
   controlWindow?.webContents.send('screens:changed', screensState())
 }
 
+/** The service state, with the stage parts (timer, messages, stage screens). */
+function serviceStateFull(): ServiceState {
+  const state = svc.serviceState()
+  return {
+    ...state,
+    groups: state.groups.map((g) => (g.config.stageView ? { ...g, stage: stage.stageRender(g.config, settings.groups) } : g)),
+    stageTimer: stage.stageTimer(),
+    stageMessage: stage.stageMessage(),
+    messages: stage.savedMessages()
+  }
+}
+
 function sendServiceState(): void {
-  controlWindow?.webContents.send('service:changed', svc.serviceState())
+  controlWindow?.webContents.send('service:changed', serviceStateFull())
 }
 
 function renderOutputs(): void {
@@ -184,7 +198,18 @@ function registerIpc(): void {
   })
 
   // ---- Service order ----
-  ipcMain.handle('service:get', () => svc.serviceState())
+  ipcMain.handle('service:get', () => serviceStateFull())
+  ipcMain.handle('service:addCountdown', () => svc.addCountdown())
+
+  // ---- Stage and messages ----
+  ipcMain.handle('stage:timerSet', (_e, label: string, seconds: number) => stage.timerSet(label, seconds))
+  ipcMain.handle('stage:timerStart', () => stage.timerStart())
+  ipcMain.handle('stage:timerPause', () => stage.timerPause())
+  ipcMain.handle('stage:timerReset', () => stage.timerReset())
+  ipcMain.handle('stage:message', (_e, text: string | null) => stage.setStageMessage(text))
+  ipcMain.handle('message:show', (_e, line1: string, line2: string, target: Target) => svc.showMessage(line1, line2, target))
+  ipcMain.handle('message:save', (_e, line1: string, line2: string) => stage.saveMessage(line1, line2))
+  ipcMain.handle('message:delete', (_e, id: string) => stage.deleteMessage(id))
   ipcMain.handle('service:pickFiles', async () => {
     const paths = await pickPaths({ multi: true, extensions: orderExtensions, name: 'Video, images and slides' })
     return paths.length ? svc.addFiles(paths) : { added: 0, skipped: [] }
@@ -360,6 +385,10 @@ if (!app.requestSingleInstanceLock()) {
     settings = loadSettings()
     openCurrentService()
     groups.connectGroups(settings, setupChanged)
+    stage.connectStage(settings, () => {
+      sendServiceState()
+      renderOutputs()
+    })
     audio.connectAudio(settings, {
       videoPlaying: svc.videoPlaying,
       onChange: () => controlWindow?.webContents.send('audio:changed', audio.audioState()),

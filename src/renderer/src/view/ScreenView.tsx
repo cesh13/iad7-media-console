@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentLayer, OutputRender, Overlays, TextLayer } from '../../../shared/types'
+import { formatCountdown, useNow } from './clock'
 import { applyDevice, meterElement } from './levelMeter'
 import { TextView } from './TextView'
 import './view.css'
@@ -45,6 +46,7 @@ export function ScreenView(props: ScreenViewProps) {
       {showIdle && <IdleScreen idle={props.idle} logoUrl={props.logoUrl} />}
       {content?.type === 'image' && <ImageContent key={content.take} content={content} />}
       {content?.type === 'slides' && <SlidesContent key={content.take} content={content} />}
+      {content?.type === 'countdown' && <CountdownContent content={content} logoUrl={props.logoUrl} />}
       {content?.type === 'video' && (
         <VideoContent
           key={content.take}
@@ -111,6 +113,19 @@ function ImageContent({ content }: { content: ContentLayer }) {
       {fit === 'blur' && <img className="layer media-cover media-blur" src={content.url} alt="" />}
       <img className={fit === 'fill' ? 'layer media-cover' : 'layer media-contain'} src={content.url} alt="" />
     </>
+  )
+}
+
+/** A countdown item (SPEC 6): text above and a large time. At 0:00 it may show the logo. */
+function CountdownContent({ content, logoUrl }: { content: ContentLayer; logoUrl?: string }) {
+  const now = useNow(250)
+  if (content.ended && content.settings.atZero === 'logo' && logoUrl) return <LogoLayer url={logoUrl} />
+  const seconds = Math.max(0, ((content.endsAt ?? now) - now) / 1000)
+  return (
+    <div className="layer countdown-layer">
+      {content.settings.textAbove && <div className="countdown-above">{content.settings.textAbove}</div>}
+      <div className="countdown-time">{formatCountdown(seconds)}</div>
+    </div>
   )
 }
 

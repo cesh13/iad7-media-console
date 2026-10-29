@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { OutputRender } from '../../../shared/types'
 import { ScreenView } from '../view/ScreenView'
+import { StageView } from '../view/StageView'
 
 const api = window.mediaConsole
 
@@ -10,6 +11,8 @@ export function LiveOutput() {
   useEffect(() => api.onOutputRender(setRender), [])
 
   if (!render) return <div className="screen-view" />
+  // Stage view groups show the stage layout (the sound of videos stays on the main screens).
+  if (render.stage) return <StageView stage={render.stage} />
 
   const audio = !!render.content && render.audioTakes.includes(render.content.take)
   return (

@@ -125,6 +125,18 @@ function GroupEditor({ group, state, canRemove }: { group: GroupConfig; state: S
       </div>
 
       <div className="group-field">
+        <span className="label-inline">{strings.stageViewLabel}</span>
+        <label className="check small">
+          <input
+            type="checkbox"
+            checked={!!group.stageView}
+            onChange={(e) => void api.updateGroup(group.id, { stageView: e.target.checked })}
+          />
+          {strings.stageViewHelp}
+        </label>
+      </div>
+
+      <div className="group-field">
         <span className="label-inline">{strings.idleLabel}</span>
         <div className="chips">
           {idleKinds.map((k) => (

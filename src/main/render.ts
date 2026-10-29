@@ -1,5 +1,6 @@
 import type { OutputRender, Settings } from '../shared/types'
 import { audioSettings } from './audio'
+import { stageRender } from './stage'
 import * as svc from './service'
 
 /**
@@ -40,7 +41,8 @@ export function outputRenders(settings: Settings, openIds: string[]): Map<string
       text: group ? svc.groupLive(group.id).text : null,
       idle: { kind: group?.idle ?? 'black', media, interval: group?.idleInterval ?? 8 },
       logoUrl: settings.logo?.url,
-      overlays: svc.getOverlays()
+      overlays: svc.getOverlays(),
+      stage: group?.stageView ? stageRender(group, settings.groups) : undefined
     })
   }
   return renders

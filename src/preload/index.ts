@@ -52,6 +52,17 @@ const api: MediaConsoleApi = {
   setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
   updateItem: (id, change) => invoke('service:updateItem', id, change),
 
+  // Stage and messages
+  stageTimerSet: (label, seconds) => invoke('stage:timerSet', label, seconds),
+  stageTimerStart: () => invoke('stage:timerStart'),
+  stageTimerPause: () => invoke('stage:timerPause'),
+  stageTimerReset: () => invoke('stage:timerReset'),
+  stageMessage: (text) => invoke('stage:message', text),
+  showMessage: (line1, line2, target) => invoke('message:show', line1, line2, target),
+  saveMessage: (line1, line2) => invoke('message:save', line1, line2),
+  deleteMessage: (id) => invoke('message:delete', id),
+  addCountdown: () => invoke('service:addCountdown'),
+
   // Shared folder
   getShared: () => invoke('shared:get'),
   onSharedChanged: (cb) => listen<SharedState>('shared:changed', cb),

@@ -12,9 +12,9 @@ export function newGroup(name: string): GroupConfig {
   return { id: randomUUID(), name, outputIds: [], idle: 'black', idleMedia: [], idleInterval: 8 }
 }
 
-/** First run: the two groups from SPEC section 2. */
+/** First run: the two groups from SPEC section 2. Stage shows the stage view (SPEC 7). */
 function defaults(): Settings {
-  return { outputs: [], groups: [newGroup('Main'), newGroup('Stage')] }
+  return { outputs: [], groups: [newGroup('Main'), { ...newGroup('Stage'), stageView: true }] }
 }
 
 export function loadSettings(): Settings {
@@ -25,6 +25,8 @@ export function loadSettings(): Settings {
     const settings: Settings = { ...defaults(), ...data }
     // Settings from step 2 have no groups: put all outputs in Main.
     if (!data.groups) settings.groups[0].outputIds = settings.outputs.map((o) => o.id)
+    // Settings from before step 10: the Stage group gets the stage view.
+    for (const g of settings.groups) if (g.stageView === undefined && g.name === 'Stage') g.stageView = true
     return settings
   } catch (err) {
     console.error('Could not read settings, using defaults:', err)

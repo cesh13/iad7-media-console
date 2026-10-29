@@ -107,6 +107,8 @@ export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1 }
   if (type === 'folder') return { autoDone: true }
   if (type === 'audio') return { autoDone: true, volume: 1 }
+  if (type === 'countdown')
+    return { autoDone: true, countdownMode: 'duration', countdownSeconds: 300, untilTime: '', textAbove: '', atZero: 'next', showOnStage: true }
   return { autoDone: true, fit: 'fit', autoNext: null }
 }
 
@@ -117,7 +119,7 @@ export function initService(loaded: Service): void {
     item.settings = { ...defaultSettings(item.type), ...item.settings }
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
-    if (item.type === 'bible') continue // No file to copy.
+    if (item.type === 'bible' || item.type === 'countdown') continue // No file to copy.
     if (item.type === 'folder') {
       openFolderIndex(item.path)
       if (item.child) restoreItem(item.child)
@@ -174,7 +176,8 @@ function setStatus(itemId: string, status: ItemStatus): void {
   }
 }
 
-export function serviceState(): ServiceState {
+/** The service state without the stage parts (index.ts adds them). */
+export function serviceState(): Omit<ServiceState, 'stageTimer' | 'stageMessage' | 'messages'> {
   refreshFolders()
   const next = nextIndex()
   return {
@@ -344,10 +347,11 @@ export function setItemStatus(itemId: string, status: ItemStatus): void {
 
 export function updateItem(
   itemId: string,
-  change: { notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
+  change: { title?: string; notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
 ): void {
   const item = findItem(itemId)
   if (!item) return
+  if (change.title?.trim()) item.title = change.title.trim()
   if (change.notes !== undefined) item.notes = change.notes
   if (change.width) item.width = change.width
   if (change.height) item.height = change.height
@@ -381,6 +385,7 @@ export function setDuration(itemId: string, seconds: number): void {
 // ---- Live ----
 
 function isReady(item: ServiceItem): boolean {
+  if (item.type === 'countdown') return true
   if (item.type === 'folder') return !!item.child && isReady(item.child)
   if (item.type === 'song') return item.cache === 'ready' && !!item.stanzas?.length
   if (item.type === 'bible') return !!item.bible && listBibles().some((b) => b.id === item.bible!.bibleId)
@@ -486,6 +491,7 @@ function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
   if (item.type === 'bible') return showText(groupIds, item.id, buildScreens(item.bible!, item.settings), item.settings, item.title, item.bible)
   if (item.type === 'song') return showText(groupIds, item.id, songScreens(item), item.settings, item.title)
   if (item.type === 'audio') return playAudioItem(item)
+  if (item.type === 'countdown') return showCountdown(groupIds, item)
   if (item.type === 'video' && item.settings.stopMusic) audioHooks.stopMusic()
   const before = liveItemIds()
   const t = ++take
@@ -642,6 +648,85 @@ export function clear(groupId?: string): void {
   else clearGroups(targetGroupIds(), true, 'both')
 }
 
+// ---- Countdown ----
+
+/** When a countdown reaches 0:00 (ms): a duration from now, or the next time the clock shows HH:MM. */
+function countdownEnd(s: ItemSettings): number {
+  if (s.countdownMode === 'until' && /^\d{1,2}:\d{2}$/.test(s.untilTime ?? '')) {
+    const [h, m] = s.untilTime!.split(':').map(Number)
+    const end = new Date()
+    end.setHours(h, m, 0, 0)
+    if (end.getTime() <= Date.now()) end.setDate(end.getDate() + 1)
+    return end.getTime()
+  }
+  return Date.now() + (s.countdownSeconds ?? 300) * 1000
+}
+
+function showCountdown(groupIds: string[], item: ServiceItem): void {
+  const before = liveItemIds()
+  const t = ++take
+  const endsAt = countdownEnd(item.settings)
+  for (const id of groupIds) {
+    const g = groupLive(id)
+    live.set(id, {
+      text: g.text && g.text.settings.mode === 'lower' && !g.text.itemId ? g.text : null,
+      content: { itemId: item.id, type: 'countdown', url: '', settings: item.settings, take: t, playing: true, endsAt }
+    })
+  }
+  updateStatuses(before, true)
+  // At 0:00: go to the next item, or show the logo, or stay at 0:00.
+  autoNextTimers.set(
+    t,
+    setTimeout(() => {
+      const ids = groupsWithTake(t)
+      if (ids.length === 0) return
+      if (item.settings.atZero === 'next') return advanceFrom(t)
+      for (const id of ids) live.get(id)!.content!.ended = true
+      if (item.settings.autoDone) setStatus(item.id, 'done')
+      changed({ save: false })
+    }, Math.max(0, endsAt - Date.now()))
+  )
+  changed()
+}
+
+export function addCountdown(): void {
+  service.items.push({
+    id: randomUUID(),
+    type: 'countdown',
+    title: 'Countdown',
+    path: '',
+    cache: 'ready',
+    status: 'pending',
+    settings: defaultSettings('countdown')
+  })
+  changed()
+}
+
+// ---- Stage screen ----
+
+/** Now, next and notes for the stage screens. */
+export function stageInfo(groupId: string): {
+  now: { title: string; notes?: string; detail?: string } | null
+  next: { title: string } | null
+  countdownTitle?: string
+} {
+  const g = groupLive(groupId)
+  const id = currentItemId(g)
+  const item = id ? findItem(id) : undefined
+  let detail: string | undefined
+  if (g.text && g.text.itemId === id) detail = g.text.screens[g.text.index]?.label
+  else if (g.content?.type === 'slides') detail = `${(g.content.page ?? 0) + 1} / ${g.content.pageUrls?.length ?? 1}`
+  // The notes of a chosen file live on its folder row.
+  const parent = service.items.find((i) => i.child?.id === id)
+  const n = nextIndex()
+  const nextItem = n >= 0 ? service.items[n] : undefined
+  return {
+    now: item ? { title: parent ? `${parent.title} › ${item.title}` : item.title, notes: item.notes || parent?.notes, detail } : null,
+    next: nextItem ? { title: nextItem.child ? `${nextItem.title} › ${nextItem.child.title}` : nextItem.title } : null,
+    countdownTitle: g.content?.type === 'countdown' ? item?.title : undefined
+  }
+}
+
 // ---- Audio layer ----
 
 function playAudioItem(item: ServiceItem): void {
@@ -668,6 +753,13 @@ export function audioItemEnded(itemId: string): void {
   audioLayer = null
   updateStatuses(before, true)
   changed()
+}
+
+/** A lower-third message (name and role, notices) on the target: the Message tab. */
+export function showMessage(line1: string, line2: string, t: Target): void {
+  const settings: ItemSettings = { ...bibleDefaults(), mode: 'lower', refPosition: 'hide' }
+  const screens: BibleScreen[] = [{ text: line1, second: line2 || undefined, ref: '', label: line1, verse: 1 }]
+  showText(targetGroupIds(t), null, screens, settings, line1)
 }
 
 /** "Clear text": the target, one group, or all groups. */

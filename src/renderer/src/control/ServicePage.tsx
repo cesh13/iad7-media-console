@@ -63,7 +63,7 @@ export function ServicePage() {
       </div>
       <div className="service-bottom">
         <BiblePanel state={state} />
-        <QuickPanel />
+        <QuickPanel state={state} />
       </div>
     </div>
   )

@@ -1438,3 +1438,92 @@
 .audio-card {
   border-color: var(--preview);
 }
+
+/* ---- Step 10: stage and message tabs, countdown ---- */
+.stage-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.timer-box {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-panel);
+  border-radius: 6px;
+}
+.timer-box.is-warn {
+  background: var(--warn-tint);
+  border-color: var(--warn);
+}
+.timer-box.is-over {
+  background: var(--live-tint);
+  border-color: var(--live);
+}
+.timer-name {
+  font-weight: 600;
+}
+.timer-time {
+  font-size: 28px;
+  font-weight: 500;
+}
+.timer-box.is-warn .timer-time {
+  color: var(--warn);
+}
+.timer-box.is-over .timer-time {
+  color: #ff5a5f;
+}
+.timer-label {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.stage-quick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.stage-quick .btn {
+  min-height: 40px;
+}
+.stage-free {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.stage-now-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--warn-tint);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+}
+.stage-now-msg .small {
+  flex: 1;
+}
+.saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.title-input {
+  font-size: 15px;
+  font-weight: 600;
+}
+.order-head .button-row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
