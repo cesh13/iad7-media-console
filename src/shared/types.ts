@@ -24,7 +24,7 @@ export interface Output {
 /** A file used by the app itself (logo, idle background), with its cached copy. */
 export interface MediaRef {
   path: string
-  type: 'image' | 'video'
+  type: 'image' | 'video' | 'audio'
   cachedPath?: string
   /** media:// URL of the cached copy, when it is ready. */
   url?: string
@@ -57,6 +57,46 @@ export interface Settings {
   currentServiceId?: string
   /** The watched shared folder, for example \\MEDIA-PC\Compartida. */
   sharedFolder?: string
+  audio?: AudioSettings
+}
+
+// ---- Audio (SPEC 5.6) ----
+
+export interface AudioSettings {
+  playlist: MediaRef[]
+  shuffle: boolean
+  /** 0..1 */
+  musicVolume: number
+  /** Volume of videos and audio items. 0..1 */
+  itemsVolume: number
+  /** Audio output device id ('' = the system default). */
+  device: string
+  /** Lower the background music when a video plays. */
+  autoDuck: boolean
+  /** Start the background music when the last item of the order ends. */
+  startAfterLast: boolean
+}
+
+/** What the control window shows in the Audio tab. */
+export interface AudioState {
+  settings: AudioSettings
+  /** Index in the playlist of the track now (or next). */
+  index: number
+  playing: boolean
+  /** Music is lower because a video plays. */
+  ducked: boolean
+  position: { time: number; duration: number } | null
+  /** An audio item from the order that plays now. */
+  item: { itemId: string; title: string; playing: boolean; time: number; duration: number } | null
+  /** Output level, 0..1 for left and right. */
+  levels: { l: number; r: number }
+}
+
+/** What the hidden audio window must play. */
+export interface AudioRender {
+  device: string
+  music: { url: string; take: number; playing: boolean; volume: number; fadeOutId?: number } | null
+  item: { url: string; take: number; playing: boolean; volume: number } | null
 }
 
 /** A saved output, and the screen it matches now (if any). */
@@ -84,7 +124,7 @@ export interface TestInfo {
 // ---- Service order (SPEC section 4) ----
 
 /** Item types supported so far. More types come in later steps. */
-export type ItemType = 'video' | 'image' | 'slides' | 'bible' | 'song' | 'folder'
+export type ItemType = 'video' | 'image' | 'slides' | 'bible' | 'song' | 'folder' | 'audio'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
@@ -112,6 +152,10 @@ export interface ItemSettings {
   endAction?: EndAction
   /** Fade picture and sound in and out (1 s). */
   fade?: boolean
+  /** Stop the background music when this video goes live. */
+  stopMusic?: boolean
+  /** Audio output device for this video ('' or missing = the main output device). */
+  audioDevice?: string
   // Image
   fit?: ImageFit
   /** Go to the next item after this many seconds. */
@@ -364,6 +408,9 @@ export interface OutputRender {
   groupName: string | null
   /** Only one output plays the sound of each take, so the audio is not doubled. */
   audioTakes: number[]
+  /** Sound of videos: master volume (0..1) and output device. */
+  itemsVolume: number
+  audioDevice: string
   content: ContentLayer | null
   text: TextLayer | null
   idle: { kind: IdleKind; media: { type: 'image' | 'video'; url: string }[]; interval: number }
@@ -458,6 +505,38 @@ export interface MediaConsoleApi {
   showVerse(verse: number): Promise<void>
   /** Screens for a passage with the given settings (for the preview). */
   bibleScreens(ref: BibleRef, settings: Partial<ItemSettings>): Promise<BibleScreen[]>
+
+  // Audio
+  getAudio(): Promise<AudioState>
+  onAudioChanged(callback: (state: AudioState) => void): () => void
+  updateAudio(change: Partial<Omit<AudioSettings, 'playlist'>>): Promise<void>
+  /** Show a file dialog; add music files (or a folder) to the playlist. */
+  pickMusic(folder: boolean): Promise<void>
+  /** Add music files or folders dropped on the playlist. */
+  addMusic(paths: string[]): Promise<void>
+  clearPlaylist(): Promise<void>
+  musicPlay(index?: number): Promise<void>
+  musicPause(): Promise<void>
+  musicNext(): Promise<void>
+  musicPrevious(): Promise<void>
+  musicFadeOut(): Promise<void>
+  /** Stop the audio item ("Audio ✕"). */
+  stopItemAudio(): Promise<void>
+
+  // Hidden audio window
+  onAudioRender(callback: (render: AudioRender) => void): () => void
+  audioReport(report: {
+    musicTake?: number
+    musicTime?: number
+    musicDuration?: number
+    musicEnded?: boolean
+    itemTake?: number
+    itemTime?: number
+    itemDuration?: number
+    itemEnded?: boolean
+  }): void
+  /** Output level from a player window, 0..1 left and right. */
+  audioLevels(source: string, l: number, r: number): void
 
   // Output windows
   onOutputRender(callback: (render: OutputRender) => void): () => void

@@ -1,6 +1,7 @@
 import type { GroupView, ScreensState, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView } from '../view/ScreenView'
+import { useAudioState } from './AudioTab'
 import { TypeIcon } from './OrderPanel'
 
 const api = window.mediaConsole
@@ -15,6 +16,7 @@ export function ScreensColumn({ state, screens }: { state: ServiceState; screens
     <aside className="group-col panel-col">
       <h2 className="label">{strings.screensColumn}</h2>
       {outputs.length === 0 && <p className="help">{strings.noOutputs}</p>}
+      <AudioLayerCard />
       {state.groups.map((g) => (
         <GroupCard key={g.config.id} group={g} state={state} screens={screens} />
       ))}
@@ -45,6 +47,35 @@ export function ScreensColumn({ state, screens }: { state: ServiceState; screens
   )
 }
 
+/** The sound that plays now (one for all screens), with "Audio ✕" (SPEC 5.4 layer buttons). */
+function AudioLayerCard() {
+  const audio = useAudioState()
+  if (!audio || (!audio.item && !audio.playing)) return null
+  const track = audio.settings.playlist[audio.index]
+  return (
+    <div className="group-card audio-card">
+      <div className="group-card-head">
+        <span className="group-card-name">{strings.audioLabel}</span>
+        <button className="btn btn-small btn-quiet" disabled={!audio.item} onClick={() => void api.stopItemAudio()}>
+          {strings.audioX}
+        </button>
+      </div>
+      {audio.item && (
+        <div className="group-now">
+          <span className="tag tag-live">{strings.badgeLive}</span>
+          <span className="row-title">{audio.item.title}</span>
+        </div>
+      )}
+      {audio.playing && track && (
+        <div className="group-now dim">
+          ♪ <span className="row-title">{track.path.split(/[\\/]/).pop()}</span>
+          {audio.ducked && <span className="badge">{strings.duckedBadge}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function GroupCard({ group, state, screens }: { group: GroupView; state: ServiceState; screens: ScreensState | null }) {
   const { config, live } = group
   const content = live.content
@@ -71,7 +102,9 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
           text={live.text}
           idle={{
             kind: config.idle,
-            media: config.idleMedia.filter((m) => m.url).map((m) => ({ type: m.type, url: m.url! })),
+            media: config.idleMedia
+              .filter((m) => m.url && m.type !== 'audio')
+              .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! })),
             interval: config.idleInterval
           }}
           logoUrl={state.logoUrl}

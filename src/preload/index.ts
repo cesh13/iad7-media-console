@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type {
+  AudioRender,
+  AudioState,
   MediaConsoleApi,
   OutputRender,
   PdfJob,
@@ -81,6 +83,23 @@ const api: MediaConsoleApi = {
   showBibleNow: (ref, startVerse) => invoke('bible:showNow', ref, startVerse),
   showVerse: (verse) => invoke('bible:showVerse', verse),
   bibleScreens: (ref, settings) => invoke('bible:screens', ref, settings),
+
+  // Audio
+  getAudio: () => invoke('audio:get'),
+  onAudioChanged: (cb) => listen<AudioState>('audio:changed', cb),
+  updateAudio: (change) => invoke('audio:update', change),
+  pickMusic: (folder) => invoke('audio:pickMusic', folder),
+  addMusic: (paths) => invoke('audio:addMusic', paths),
+  clearPlaylist: () => invoke('audio:clearPlaylist'),
+  musicPlay: (index) => invoke('audio:play', index),
+  musicPause: () => invoke('audio:pause'),
+  musicNext: () => invoke('audio:next'),
+  musicPrevious: () => invoke('audio:previous'),
+  musicFadeOut: () => invoke('audio:fadeOut'),
+  stopItemAudio: () => invoke('audio:stopItem'),
+  onAudioRender: (cb) => listen<AudioRender>('audio:render', cb),
+  audioReport: (r) => ipcRenderer.send('audio:report', r),
+  audioLevels: (source, l, r) => ipcRenderer.send('audio:levels', source, l, r),
 
   // Output windows
   onOutputRender: (cb) => listen<OutputRender>('output:render', cb),

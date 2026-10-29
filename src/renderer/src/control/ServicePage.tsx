@@ -5,6 +5,7 @@ import { useScreensState, useServiceState } from './hooks'
 import { BiblePanel } from './BiblePanel'
 import { OrderPanel, TypeIcon } from './OrderPanel'
 import { PreviewPanel } from './PreviewPanel'
+import { QuickPanel } from './QuickPanel'
 import { ScreensColumn } from './ScreensColumn'
 
 const api = window.mediaConsole
@@ -62,6 +63,7 @@ export function ServicePage() {
       </div>
       <div className="service-bottom">
         <BiblePanel state={state} />
+        <QuickPanel />
       </div>
     </div>
   )

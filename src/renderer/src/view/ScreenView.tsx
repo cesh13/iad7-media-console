@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentLayer, OutputRender, Overlays, TextLayer } from '../../../shared/types'
+import { applyDevice, meterElement } from './levelMeter'
 import { TextView } from './TextView'
 import './view.css'
 
@@ -27,6 +28,9 @@ export interface ScreenViewProps {
   onPlayback?: (report: PlaybackReport) => void
   /** Small copies follow the time of the real output. */
   syncTime?: number
+  /** Sound of videos: master volume (0..1) and output device. Only used with `audio`. */
+  itemsVolume?: number
+  audioDevice?: string
 }
 
 const fadeSeconds = 1
@@ -48,6 +52,8 @@ export function ScreenView(props: ScreenViewProps) {
           audio={!!props.audio}
           onPlayback={props.onPlayback}
           syncTime={props.syncTime}
+          itemsVolume={props.itemsVolume ?? 1}
+          audioDevice={props.audioDevice ?? ''}
         />
       )}
       {content?.ended && content.settings.endAction === 'black' && <div className="layer layer-black" />}
@@ -131,8 +137,10 @@ function VideoContent(props: {
   audio: boolean
   onPlayback?: (r: PlaybackReport) => void
   syncTime?: number
+  itemsVolume: number
+  audioDevice: string
 }) {
-  const { content, audio, onPlayback, syncTime } = props
+  const { content, audio, onPlayback, syncTime, itemsVolume } = props
   const s = content.settings
   const ref = useRef<HTMLVideoElement>(null)
   const lastReport = useRef(0)
@@ -141,6 +149,17 @@ function VideoContent(props: {
 
   const start = s.start ?? 0
   const loop = s.endAction === 'loop'
+  const volume = (s.volume ?? 1) * itemsVolume
+
+  // The output with the sound: use the chosen device, and measure the level.
+  const device = s.audioDevice || props.audioDevice
+  useEffect(() => {
+    if (audio) applyDevice(ref.current, device)
+  }, [audio, device])
+  useEffect(() => {
+    if (!audio || !ref.current) return
+    return meterElement(ref.current, (l, r) => window.mediaConsole.audioLevels('video', l, r))
+  }, [audio])
 
   // Play or pause when the control window says so.
   useEffect(() => {
@@ -198,7 +217,7 @@ function VideoContent(props: {
       level = Math.max(0, level)
     }
     setOpacity(level)
-    video.volume = Math.max(0, Math.min(1, (s.volume ?? 1) * level))
+    video.volume = Math.max(0, Math.min(1, volume * level))
     // End point: loop back to the start point, or end the video.
     if (s.end && video.currentTime >= s.end) {
       if (loop) video.currentTime = start
@@ -213,11 +232,12 @@ function VideoContent(props: {
       className="layer media-contain"
       style={{ opacity, transition: 'opacity 0.25s linear' }}
       src={content.url}
+      crossOrigin="anonymous"
       muted={!audio}
       loop={loop && !s.end}
       onLoadedMetadata={(e) => {
         if (start) e.currentTarget.currentTime = start
-        e.currentTarget.volume = s.fade ? 0 : (s.volume ?? 1)
+        e.currentTarget.volume = s.fade ? 0 : Math.min(1, volume)
         if (!s.fade) setOpacity(1)
         if (content.playing && !content.ended) void e.currentTarget.play().catch(() => {})
         report(false)

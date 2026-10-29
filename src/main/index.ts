@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type {
   BibleRef,
@@ -11,6 +11,7 @@ import type {
   Settings,
   Target
 } from '../shared/types'
+import * as audio from './audio'
 import * as bible from './bible'
 import { listScreens, matchOutputs } from './displays'
 import * as groups from './groups'
@@ -227,6 +228,31 @@ function registerIpc(): void {
   })
   ipcMain.handle('shared:seen', (_e, paths?: string[]) => shared.markSeen(paths))
 
+  // ---- Audio ----
+  ipcMain.handle('audio:get', () => audio.audioState())
+  ipcMain.handle('audio:update', (_e, change: Parameters<typeof audio.updateAudio>[0]) => {
+    audio.updateAudio(change)
+    renderOutputs() // Video volume and device.
+  })
+  ipcMain.handle('audio:pickMusic', async (_e, folder: boolean) => {
+    if (!controlWindow) return
+    const result = await dialog.showOpenDialog(controlWindow, {
+      properties: folder ? ['openDirectory'] : ['openFile', 'multiSelections'],
+      filters: folder ? undefined : [{ name: 'Music', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac'] }]
+    })
+    if (!result.canceled) await audio.addMusic(result.filePaths)
+  })
+  ipcMain.handle('audio:addMusic', (_e, paths: string[]) => audio.addMusic(paths))
+  ipcMain.handle('audio:clearPlaylist', () => audio.clearPlaylist())
+  ipcMain.handle('audio:play', (_e, index?: number) => audio.play(index))
+  ipcMain.handle('audio:pause', () => audio.pause())
+  ipcMain.handle('audio:next', () => audio.next())
+  ipcMain.handle('audio:previous', () => audio.previous())
+  ipcMain.handle('audio:fadeOut', () => audio.fadeOut())
+  ipcMain.handle('audio:stopItem', () => svc.clearAudio())
+  ipcMain.on('audio:report', (_e, r: Parameters<typeof audio.report>[0]) => audio.report(r))
+  ipcMain.on('audio:levels', (e, source: string, l: number, r: number) => audio.setLevels(`${source}:${e.sender.id}`, l, r))
+
   // ---- Live ----
   ipcMain.handle('live:target', (_e, target: Target) => svc.setTarget(target))
   ipcMain.handle('live:go', (_e, id: string, target?: Target, page?: number) => svc.goLive(id, target, page))
@@ -269,6 +295,21 @@ function registerIpc(): void {
   ipcMain.on('output:playback', (_e, info: PlaybackInfo & { ended: boolean }) => svc.reportPlayback(info))
 }
 
+/**
+ * Let the app windows list the audio output devices with their names and
+ * choose one (setSinkId). Only the app's own pages ask for this.
+ */
+function allowAudioDevices(): void {
+  const ownPage = (url: string) => url.startsWith('file://') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')
+  session.defaultSession.setPermissionCheckHandler((_wc, permission, origin) => {
+    if (permission === 'media' || permission === 'speaker-selection') return ownPage(origin)
+    return true
+  })
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    callback(permission === 'speaker-selection' ? ownPage(details.requestingUrl) : permission !== 'media')
+  })
+}
+
 function setShared(path: string | null): void {
   settings.sharedFolder = path?.trim() || undefined
   saveSettings(settings)
@@ -299,6 +340,7 @@ function openCurrentService(): void {
     onChange: (outputsChanged) => {
       sendServiceState()
       if (outputsChanged) renderOutputs()
+      audio.videoStateChanged()
     }
   })
   svc.initService(service)
@@ -318,6 +360,18 @@ if (!app.requestSingleInstanceLock()) {
     settings = loadSettings()
     openCurrentService()
     groups.connectGroups(settings, setupChanged)
+    audio.connectAudio(settings, {
+      videoPlaying: svc.videoPlaying,
+      onChange: () => controlWindow?.webContents.send('audio:changed', audio.audioState()),
+      onItemEnded: svc.audioItemEnded
+    })
+    svc.connectAudioHooks({
+      playItem: audio.playItem,
+      stopItem: audio.stopItem,
+      stopMusic: audio.fadeOut,
+      orderEnded: audio.orderEnded
+    })
+    allowAudioDevices()
     registerIpc()
     onTestWindowsChanged(sendScreensState)
     watchScreens()
@@ -332,6 +386,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     allowOutputWindowsToClose()
     closePdfWindow()
+    audio.closeAudioWindow()
     shared.stopShared()
     svc.flushSave()
   })

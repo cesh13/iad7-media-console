@@ -21,7 +21,15 @@ export const typeByExtension: Record<string, ItemType> = {
   '.pps': 'slides',
   '.odp': 'slides',
   // A text file is a song: one stanza per screen.
-  '.txt': 'song'
+  '.txt': 'song',
+  '.mp3': 'audio',
+  '.wav': 'audio',
+  '.m4a': 'audio',
+  '.aac': 'audio',
+  '.ogg': 'audio',
+  '.oga': 'audio',
+  '.opus': 'audio',
+  '.flac': 'audio'
 }
 
 const ignoredNames = new Set(['thumbs.db', 'desktop.ini', '.ds_store'])

@@ -1301,3 +1301,140 @@
   font-size: 11px;
   color: var(--label);
 }
+
+/* ---- Step 9: quick panel, audio ---- */
+.quick {
+  flex: 1 1 360px;
+  min-width: 340px;
+  max-width: 520px;
+  border-left: 1px solid var(--border-panel);
+}
+.quick-tabs {
+  padding: 4px 12px 0;
+  border-bottom: 1px solid var(--border-panel);
+}
+.quick-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px;
+}
+.audio-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.now-playing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--bg-card);
+  border-radius: 6px;
+}
+.np-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.np-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tag-ok {
+  background: var(--ok);
+  color: #0b1a12;
+}
+.np-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.progress-music {
+  background: var(--preview);
+}
+.playlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.playlist-list {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--border-panel);
+  border-radius: 6px;
+}
+.playlist-row {
+  display: flex;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: default;
+}
+.playlist-row.is-on {
+  background: var(--preview-tint);
+  color: var(--text);
+}
+.audio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--live);
+  background: var(--live-tint);
+  border-radius: 6px;
+}
+.volumes {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+.volume {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.volume input {
+  accent-color: var(--preview);
+}
+.meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.meter-bars {
+  display: flex;
+  gap: 3px;
+  height: 44px;
+}
+.meter-bar {
+  position: relative;
+  width: 10px;
+  height: 100%;
+  background: var(--bg-page);
+  border: 1px solid var(--border-panel);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meter-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, var(--ok) 0%, var(--ok) 65%, var(--warn) 85%, var(--live) 100%);
+  background-size: 100% 44px;
+  background-position: bottom;
+  transition: height 0.08s linear;
+}
+.audio-preview {
+  color: var(--text-2);
+}
+.audio-card {
+  border-color: var(--preview);
+}

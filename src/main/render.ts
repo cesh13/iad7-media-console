@@ -1,4 +1,5 @@
 import type { OutputRender, Settings } from '../shared/types'
+import { audioSettings } from './audio'
 import * as svc from './service'
 
 /**
@@ -27,12 +28,14 @@ export function outputRenders(settings: Settings, openIds: string[]): Map<string
     const output = settings.outputs.find((o) => o.id === outputId)
     const group = settings.groups.find((g) => g.outputIds.includes(outputId))
     const media = (group?.idleMedia ?? [])
-      .filter((m) => m.url)
-      .map((m) => ({ type: m.type, url: m.url! }))
+      .filter((m) => m.url && m.type !== 'audio')
+      .map((m) => ({ type: m.type as 'image' | 'video', url: m.url! }))
     renders.set(outputId, {
       outputName: output?.name ?? '',
       groupName: group?.name ?? null,
       audioTakes: owners.get(outputId) ?? [],
+      itemsVolume: audioSettings().itemsVolume,
+      audioDevice: audioSettings().device,
       content: group ? svc.groupLive(group.id).content : null,
       text: group ? svc.groupLive(group.id).text : null,
       idle: { kind: group?.idle ?? 'black', media, interval: group?.idleInterval ?? 8 },

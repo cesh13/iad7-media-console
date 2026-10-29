@@ -81,9 +81,17 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
       {/* Read the size of pictures and the length of videos once. */}
       {items
         .flatMap((i) => (i.child ? [i.child] : [i]))
-        .filter((i) => i.url && (i.type === 'video' || i.type === 'image') && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
+        .filter((i) => i.url && (i.type === 'video' || i.type === 'image' || i.type === 'audio') && (i.type === 'audio' ? i.duration === undefined : i.width === undefined || (i.type === 'video' && i.duration === undefined)))
         .map((i) =>
-          i.type === 'video' ? (
+          i.type === 'audio' ? (
+            <audio
+              key={i.id}
+              className="hidden"
+              preload="metadata"
+              src={i.url}
+              onLoadedMetadata={(e) => void api.setDuration(i.id, e.currentTarget.duration)}
+            />
+          ) : i.type === 'video' ? (
             <video
               key={i.id}
               className="hidden"
@@ -164,7 +172,7 @@ function OrderRow(props: {
               {strings.copyError}
             </span>
           )}
-          {item.cache === 'ready' && item.type === 'video' && formatTime(item.duration)}
+          {item.cache === 'ready' && (item.type === 'video' || item.type === 'audio') && formatTime(item.duration)}
           {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
           {item.type === 'bible' && item.bible && strings.verseCount(item.bible.to - item.bible.from + 1)}
           {item.type === 'song' && item.stanzas && strings.stanzaCount(item.stanzas.length)}
@@ -204,7 +212,12 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
   return (
     <span className="type-icon" title={strings.types[type]}>
-      {type === 'folder' ? (
+      {type === 'audio' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 9v6h4l5 4V5L8 9z" />
+          <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />
+        </svg>
+      ) : type === 'folder' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
         </svg>

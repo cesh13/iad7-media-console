@@ -41,10 +41,32 @@ let seekId = 0
 /** Timers for images with "next item after N s", by take. */
 const autoNextTimers = new Map<number, NodeJS.Timeout>()
 
+/** The audio layer: an audio item from the order that plays now (one for all groups). */
+let audioLayer: { itemId: string; take: number } | null = null
+let audioHooks: {
+  playItem: (itemId: string, title: string, url: string) => void
+  stopItem: () => void
+  stopMusic: () => void
+  orderEnded: () => void
+} = { playItem: () => {}, stopItem: () => {}, stopMusic: () => {}, orderEnded: () => {} }
+
 let getGroups: () => GroupConfig[] = () => []
 let logoUrl: () => string | undefined = () => undefined
 let notify: (outputsChanged: boolean) => void = () => {}
 let saveTimer: NodeJS.Timeout | null = null
+
+export function connectAudioHooks(hooks: typeof audioHooks): void {
+  audioHooks = hooks
+}
+
+/** A video plays now in some group (for auto duck). */
+export function videoPlaying(): boolean {
+  for (const g of live.values()) {
+    const c = g.content
+    if (c?.type === 'video' && c.playing && !c.ended && (c.settings.volume ?? 1) > 0) return true
+  }
+  return false
+}
 
 export function connectService(options: {
   groups: () => GroupConfig[]
@@ -84,6 +106,7 @@ export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'bible') return bibleDefaults()
   if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1 }
   if (type === 'folder') return { autoDone: true }
+  if (type === 'audio') return { autoDone: true, volume: 1 }
   return { autoDone: true, fit: 'fit', autoNext: null }
 }
 
@@ -371,6 +394,7 @@ function liveItemIds(): Set<string> {
     if (g.content) ids.add(g.content.itemId)
     if (g.text?.itemId) ids.add(g.text.itemId)
   }
+  if (audioLayer) ids.add(audioLayer.itemId)
   return ids
 }
 
@@ -423,7 +447,12 @@ function currentItemId(g: GroupLive): string | null {
 
 function liveIndex(): number {
   const g = referenceLive()
-  const id = g ? currentItemId(g) : null
+  let id = g ? currentItemId(g) : null
+  // An audio item that went live after the screens' item is the current item.
+  if (audioLayer) {
+    const takes = g ? [g.content?.take ?? 0, g.text?.itemId ? g.text.take : 0] : [0]
+    if (!id || audioLayer.take > Math.max(...takes)) id = audioLayer.itemId
+  }
   return id ? orderIndex(id) : -1
 }
 
@@ -456,6 +485,8 @@ function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
   if (!item || !isReady(item) || groupIds.length === 0) return
   if (item.type === 'bible') return showText(groupIds, item.id, buildScreens(item.bible!, item.settings), item.settings, item.title, item.bible)
   if (item.type === 'song') return showText(groupIds, item.id, songScreens(item), item.settings, item.title)
+  if (item.type === 'audio') return playAudioItem(item)
+  if (item.type === 'video' && item.settings.stopMusic) audioHooks.stopMusic()
   const before = liveItemIds()
   const t = ++take
   for (const id of groupIds) {
@@ -560,13 +591,20 @@ function advanceFrom(t: number): void {
   const from = orderIndex(itemId)
   const nextItem = items.slice(from + 1).find(isReady)
   if (nextItem) goLiveIn(groupIds, nextItem.id)
-  else clearGroups(groupIds, true, 'both')
+  else {
+    clearGroups(groupIds, true, 'both')
+    audioHooks.orderEnded()
+  }
 }
 
 export function next(): void {
   const i = nextIndex()
   if (i >= 0) goLive(service.items[i].id)
-  else clearGroups(targetGroupIds(), true, 'both') // The last item ended: go to idle.
+  else {
+    // The last item ended: go to idle.
+    clearGroups(targetGroupIds(), true, 'both')
+    audioHooks.orderEnded()
+  }
 }
 
 export function previous(): void {
@@ -602,6 +640,34 @@ function clearGroups(groupIds: string[], markDone: boolean, layer: 'content' | '
 export function clear(groupId?: string): void {
   if (groupId) clearGroups([groupId], true, 'content')
   else clearGroups(targetGroupIds(), true, 'both')
+}
+
+// ---- Audio layer ----
+
+function playAudioItem(item: ServiceItem): void {
+  const before = liveItemIds()
+  audioLayer = { itemId: item.id, take: ++take }
+  audioHooks.playItem(item.id, item.title, item.url!)
+  updateStatuses(before, true)
+  changed()
+}
+
+/** "Audio ✕", or the audio item ended (`ended`: then go on to the next item if it is set to). */
+export function clearAudio(): void {
+  if (!audioLayer) return
+  const before = liveItemIds()
+  audioLayer = null
+  audioHooks.stopItem()
+  updateStatuses(before, true)
+  changed()
+}
+
+export function audioItemEnded(itemId: string): void {
+  if (audioLayer?.itemId !== itemId) return
+  const before = liveItemIds()
+  audioLayer = null
+  updateStatuses(before, true)
+  changed()
 }
 
 /** "Clear text": the target, one group, or all groups. */

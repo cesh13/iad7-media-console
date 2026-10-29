@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ContentLayer, EndAction, ImageFit, ItemSettings, ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView, type PlaybackReport } from '../view/ScreenView'
+import { useAudioDevices } from './AudioTab'
 import { BiblePreview, SongPreview } from './BiblePreview'
 
 const api = window.mediaConsole
@@ -126,6 +127,7 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
           />
         )}
         {!ready && <span className="dim preview-wait">{item.cache === 'error' ? item.cacheError : strings.notReady}</span>}
+        {item.type === 'audio' && ready && <span className="preview-wait audio-preview">♪ {strings.audioItemNote}</span>}
         {item.type === 'video' && ready && <span className="preview-muted">{strings.previewMuted}</span>}
       </div>
 
@@ -344,6 +346,8 @@ function VideoOptions(props: {
           </div>
         </div>
 
+        <VideoAudioOptions item={item} set={set} />
+
         <div className="option">
           <span className="label-inline">{strings.whenEnds}</span>
           <div className="chips">
@@ -359,6 +363,31 @@ function VideoOptions(props: {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Sound of a video: stop the background music, and the output device (SPEC 6). */
+function VideoAudioOptions({ item, set }: { item: ServiceItem; set: (s: Partial<ItemSettings>) => void }) {
+  const devices = useAudioDevices()
+  const s = item.settings
+  return (
+    <div className="option">
+      <span className="label-inline">{strings.audioLabel}</span>
+      <select className="input select" value={s.audioDevice ?? ''} onChange={(e) => set({ audioDevice: e.target.value })}>
+        <option value="">{strings.mainDevice}</option>
+        {devices
+          .filter((d) => d.deviceId !== 'default')
+          .map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || d.deviceId.slice(0, 12)}
+            </option>
+          ))}
+      </select>
+      <label className="check">
+        <input type="checkbox" checked={!!s.stopMusic} onChange={(e) => set({ stopMusic: e.target.checked })} />
+        {strings.stopMusic}
+      </label>
     </div>
   )
 }

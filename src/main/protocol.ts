@@ -16,13 +16,25 @@ const mimeTypes: Record<string, string> = {
   '.gif': 'image/gif',
   '.webp': 'image/webp',
   '.bmp': 'image/bmp',
-  '.pdf': 'application/pdf'
+  '.pdf': 'application/pdf',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.opus': 'audio/ogg',
+  '.flac': 'audio/flac'
 }
+
+/** The app pages (file:// or the dev server) may read these files, also for the level meter. */
+const cors = { 'Access-Control-Allow-Origin': '*' }
 
 /** Must run before the app is ready. */
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
-    { scheme: 'media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+    // corsEnabled: the level meter may read the sound of media:// files.
+    { scheme: 'media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
   ])
 }
 
@@ -49,7 +61,7 @@ export function handleMediaScheme(): void {
       const body = Readable.toWeb(createReadStream(file)) as ReadableStream
       return new Response(body, {
         status: 200,
-        headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' }
+        headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes', ...cors }
       })
     }
 
@@ -71,7 +83,8 @@ export function handleMediaScheme(): void {
         'Content-Type': type,
         'Content-Length': String(end - start + 1),
         'Content-Range': `bytes ${start}-${end}/${size}`,
-        'Accept-Ranges': 'bytes'
+        'Accept-Ranges': 'bytes',
+        ...cors
       }
     })
   })
