@@ -37,10 +37,11 @@ const api: MediaConsoleApi = {
   setDuration: (id, seconds) => invoke('service:setDuration', id, seconds),
   moveItem: (id, toIndex) => invoke('service:moveItem', id, toIndex),
   setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
+  updateItem: (id, change) => invoke('service:updateItem', id, change),
 
   // Live
   setTarget: (target) => invoke('live:target', target),
-  goLive: (id) => invoke('live:go', id),
+  goLive: (id, target) => invoke('live:go', id, target),
   next: () => invoke('live:next'),
   previous: () => invoke('live:previous'),
   clear: (groupId) => invoke('live:clear', groupId),

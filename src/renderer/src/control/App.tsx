@@ -29,8 +29,8 @@ export function App() {
           <div className="topbar-actions">
             <button
               className={overlays.logo ? 'btn btn-on' : 'btn'}
-              disabled={!state.logoReady}
-              title={state.logoReady ? undefined : strings.noLogoHint}
+              disabled={!state.logoUrl}
+              title={state.logoUrl ? undefined : strings.noLogoHint}
               onClick={() => void api.setOverlay('logo', !overlays.logo)}
             >
               {strings.logo}

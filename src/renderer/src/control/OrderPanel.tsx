@@ -70,18 +70,35 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
         {dropActive && <div className="drop-hint">{strings.dropHere}</div>}
       </div>
 
-      {/* Read the length of videos that do not have one yet. */}
+      {/* Read the size of pictures and the length of videos once. */}
       {items
-        .filter((i) => i.type === 'video' && i.url && i.duration === undefined)
-        .map((i) => (
-          <video
-            key={i.id}
-            className="hidden"
-            preload="metadata"
-            src={i.url}
-            onLoadedMetadata={(e) => void api.setDuration(i.id, e.currentTarget.duration)}
-          />
-        ))}
+        .filter((i) => i.url && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
+        .map((i) =>
+          i.type === 'video' ? (
+            <video
+              key={i.id}
+              className="hidden"
+              preload="metadata"
+              src={i.url}
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget
+                void api.updateItem(i.id, { width: v.videoWidth, height: v.videoHeight })
+                void api.setDuration(i.id, v.duration)
+              }}
+            />
+          ) : (
+            <img
+              key={i.id}
+              className="hidden"
+              src={i.url}
+              alt=""
+              onLoad={(e) => {
+                const img = e.currentTarget
+                void api.updateItem(i.id, { width: img.naturalWidth, height: img.naturalHeight })
+              }}
+            />
+          )
+        )}
     </section>
   )
 }

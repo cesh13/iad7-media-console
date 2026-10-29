@@ -6,6 +6,7 @@ import type {
   AddFilesResult,
   GroupConfig,
   GroupLive,
+  ItemSettings,
   ItemStatus,
   ItemType,
   Overlays,
@@ -45,19 +46,21 @@ let target: Target = 'all'
 const overlays: Overlays = { black: false, logo: false }
 let take = 0
 let seekId = 0
+/** Timers for images with "next item after N s", by take. */
+const autoNextTimers = new Map<number, NodeJS.Timeout>()
 
 let getGroups: () => GroupConfig[] = () => []
-let hasLogo: () => boolean = () => false
+let logoUrl: () => string | undefined = () => undefined
 let notify: (outputsChanged: boolean) => void = () => {}
 let saveTimer: NodeJS.Timeout | null = null
 
 export function connectService(options: {
   groups: () => GroupConfig[]
-  hasLogo: () => boolean
+  logoUrl: () => string | undefined
   onChange: (outputsChanged: boolean) => void
 }): void {
   getGroups = options.groups
-  hasLogo = options.hasLogo
+  logoUrl = options.logoUrl
   notify = options.onChange
 }
 
@@ -83,9 +86,16 @@ export function flushSave(): void {
   if (service) saveService(service)
 }
 
+export function defaultSettings(type: ItemType): ItemSettings {
+  if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
+  return { autoDone: true, fit: 'fit', autoNext: null }
+}
+
 export function initService(loaded: Service): void {
   service = loaded
   for (const item of service.items) {
+    // Services from steps 2 and 3 have no settings yet.
+    item.settings = { ...defaultSettings(item.type), ...item.settings }
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
     // Copy again if the app stopped during a copy, or the cache was cleared.
@@ -115,7 +125,7 @@ export function serviceState(): ServiceState {
     playback: Object.fromEntries(playback),
     nextItemId: next >= 0 ? service.items[next].id : null,
     overlays,
-    logoReady: hasLogo()
+    logoUrl: logoUrl()
   }
 }
 
@@ -160,7 +170,8 @@ export async function addFiles(paths: string[]): Promise<AddFilesResult> {
       path,
       cache: 'copying',
       cacheProgress: 0,
-      status: 'pending'
+      status: 'pending',
+      settings: defaultSettings(type)
     }
     service.items.push(item)
     startCopy(item)
@@ -223,6 +234,23 @@ export function setItemStatus(itemId: string, status: ItemStatus): void {
   changed()
 }
 
+export function updateItem(
+  itemId: string,
+  change: { notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }
+): void {
+  const item = findItem(itemId)
+  if (!item) return
+  if (change.notes !== undefined) item.notes = change.notes
+  if (change.width) item.width = change.width
+  if (change.height) item.height = change.height
+  if (change.settings) {
+    item.settings = { ...item.settings, ...change.settings }
+    // Groups that show the item use the new settings at once.
+    for (const g of live.values()) if (g.content?.itemId === itemId) g.content.settings = item.settings
+  }
+  changed({ outputs: !!change.settings })
+}
+
 export function setDuration(itemId: string, seconds: number): void {
   const item = findItem(itemId)
   if (!item || !Number.isFinite(seconds) || item.duration === seconds) return
@@ -255,16 +283,24 @@ function updateStatuses(before: Set<string>, markDone: boolean): void {
   }
   for (const id of before) {
     const item = findItem(id)
-    if (item && !now.has(id)) item.status = markDone ? 'done' : 'pending'
+    if (item && !now.has(id)) item.status = markDone && item.settings.autoDone ? 'done' : 'pending'
   }
   // Forget playback of takes that no group shows.
   const takes = new Set([...live.values()].map((g) => g.content?.take))
   for (const t of [...playback.keys()]) if (!takes.has(t)) playback.delete(t)
+  for (const [t, timer] of autoNextTimers) {
+    if (takes.has(t)) continue
+    clearTimeout(timer)
+    autoNextTimers.delete(t)
+  }
 }
 
 function targetGroupIds(t: Target = target): string[] {
   const groups = getGroups()
-  return t === 'all' ? groups.map((g) => g.id) : groups.filter((g) => g.id === t).map((g) => g.id)
+  if (t !== 'all') return groups.filter((g) => g.id === t).map((g) => g.id)
+  // "All" means the groups that have screens (or all groups, if none has one yet).
+  const withScreens = groups.filter((g) => g.outputIds.length > 0)
+  return (withScreens.length ? withScreens : groups).map((g) => g.id)
 }
 
 /**
@@ -301,17 +337,42 @@ export function setTarget(t: Target): void {
   changed({ save: false, outputs: false })
 }
 
-export function goLive(itemId: string): void {
+export function goLive(itemId: string, t?: Target): void {
+  goLiveIn(targetGroupIds(t), itemId)
+}
+
+function goLiveIn(groupIds: string[], itemId: string): void {
   const item = findItem(itemId)
-  const ids = targetGroupIds()
-  if (!item || !isReady(item) || ids.length === 0) return
+  if (!item || !isReady(item) || groupIds.length === 0) return
   const before = liveItemIds()
-  take++
-  for (const id of ids) {
-    live.set(id, { ...groupLive(id), content: { itemId: item.id, type: item.type, url: item.url!, take, playing: true } })
+  const t = ++take
+  for (const id of groupIds) {
+    live.set(id, {
+      ...groupLive(id),
+      content: { itemId: item.id, type: item.type, url: item.url!, settings: item.settings, take: t, playing: true }
+    })
   }
   updateStatuses(before, true)
+  if (item.type === 'image' && item.settings.autoNext) {
+    autoNextTimers.set(t, setTimeout(() => advanceFrom(t), item.settings.autoNext * 1000))
+  }
   changed()
+}
+
+function groupsWithTake(t: number): string[] {
+  return [...live].filter(([, g]) => g.content?.take === t).map(([id]) => id)
+}
+
+/** The groups that show this take go to the item after it (or to idle after the last item). */
+function advanceFrom(t: number): void {
+  const groupIds = groupsWithTake(t)
+  const itemId = groupIds.length ? live.get(groupIds[0])!.content!.itemId : null
+  if (!itemId) return
+  const items = service.items
+  const from = items.findIndex((i) => i.id === itemId)
+  const nextItem = items.slice(from + 1).find(isReady)
+  if (nextItem) goLiveIn(groupIds, nextItem.id)
+  else clearGroups(groupIds, true)
 }
 
 export function next(): void {
@@ -375,15 +436,38 @@ export function setOverlay(name: keyof Overlays, on: boolean): void {
 
 /** Called by the output that plays the sound of a take. */
 export function reportPlayback(info: PlaybackInfo & { ended: boolean }): void {
-  const groupIds = [...live].filter(([, g]) => g.content?.take === info.take).map(([id]) => id)
+  const groupIds = groupsWithTake(info.take)
   if (groupIds.length === 0) return
-  const itemId = live.get(groupIds[0])!.content!.itemId
-  if (info.duration) setDuration(itemId, info.duration)
-  if (info.ended) {
-    // Default "when it ends" action: mark done and go to the idle screen.
-    clearGroups(groupIds, true)
-    return
-  }
+  const content = live.get(groupIds[0])!.content!
+  if (info.duration) setDuration(content.itemId, info.duration)
+  if (content.ended) return
+  if (info.ended) return videoEnded(info.take, content.settings)
   playback.set(info.take, { take: info.take, currentTime: info.currentTime, duration: info.duration, playing: info.playing })
   notify(false)
+}
+
+/** Do the "when it ends" action of the item. */
+function videoEnded(t: number, settings: ItemSettings): void {
+  const groupIds = groupsWithTake(t)
+  switch (settings.endAction ?? 'idle') {
+    case 'next':
+      return advanceFrom(t)
+    case 'black':
+    case 'hold': {
+      // Keep the item on the content layer: the output shows black or the last frame.
+      for (const id of groupIds) {
+        const c = live.get(id)!.content!
+        c.ended = true
+        c.playing = false
+      }
+      const item = findItem(live.get(groupIds[0])!.content!.itemId)
+      if (item && settings.autoDone) item.status = 'done'
+      playback.delete(t)
+      return changed({ save: false })
+    }
+    case 'loop':
+      return // The output loops the video itself; it never reports the end.
+    default:
+      return clearGroups(groupIds, true)
+  }
 }

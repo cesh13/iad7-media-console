@@ -1,5 +1,6 @@
 import type { GroupView, ScreensState, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
+import { ScreenView } from '../view/ScreenView'
 import { TypeIcon } from './OrderPanel'
 
 const api = window.mediaConsole
@@ -60,6 +61,19 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
         <button className="btn btn-small btn-quiet" disabled={!content} onClick={() => void api.clear(config.id)}>
           {strings.clear}
         </button>
+      </div>
+      <div className="mini">
+        <ScreenView
+          content={content}
+          idle={{
+            kind: config.idle,
+            media: config.idleMedia.filter((m) => m.url).map((m) => ({ type: m.type, url: m.url! })),
+            interval: config.idleInterval
+          }}
+          logoUrl={state.logoUrl}
+          overlays={state.overlays}
+          syncTime={playback?.currentTime}
+        />
       </div>
       {content && item ? (
         <div className="group-now">

@@ -1,4 +1,4 @@
-import type { IdleKind } from '../../shared/types'
+import type { EndAction, IdleKind, ImageFit } from '../../shared/types'
 
 // All UI text lives here, so it can be translated later.
 
@@ -55,6 +55,34 @@ export const strings = {
   source: 'Source',
   cachedCopy: 'Local copy',
   notReady: 'The file is still copying. It can go live when the copy is ready.',
+
+  // Preview panel
+  previewLabel: 'Preview',
+  previewMuted: 'preview is muted',
+  localCopyOk: 'local copy ✓',
+  notes: 'Item notes',
+  notesPlaceholder: 'Notes for the team (shown on the Stage screen later)',
+  autoDone: 'Auto-mark done at end',
+  points: 'Start / end',
+  startPoint: 'Start point',
+  endPoint: 'End point',
+  setStart: 'Set start',
+  setEnd: 'Set end',
+  clearPoints: 'Clear points',
+  cues: 'Cues',
+  cuePlaceholder: 'Cue name, e.g. pausa para oración',
+  addCue: 'Add cue at',
+  jumpPreview: 'Jump',
+  jumpLive: 'Jump live',
+  volume: 'Volume',
+  fade: 'Fade in / out 1 s',
+  whenEnds: 'When it ends',
+  endActions: { next: 'Go to next item', idle: 'Go to idle screen', black: 'Black screen', hold: 'Hold last frame', loop: 'Loop' } as Record<EndAction, string>,
+  fitLabel: 'Fit',
+  fits: { fit: 'Fit', fill: 'Fill (crop)', blur: 'Blur sides' } as Record<ImageFit, string>,
+  verticalNote: 'The picture is vertical, so "Fit" adds black bars at the sides.',
+  autoNextLabel: 'Auto-advance',
+  autoNextAfter: 'Next item after',
 
   // Live panel
   liveLabel: 'Live',

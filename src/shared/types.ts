@@ -86,6 +86,36 @@ export type ItemType = 'video' | 'image'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
+/** What happens when a video ends (SPEC section 6). Default: go to the idle screen. */
+export type EndAction = 'next' | 'idle' | 'black' | 'hold' | 'loop'
+
+/** How an image fills the screen. */
+export type ImageFit = 'fit' | 'fill' | 'blur'
+
+export interface Cue {
+  time: number
+  label: string
+}
+
+/** Options per item. Fields that do not apply to the item type are not used. */
+export interface ItemSettings {
+  /** Mark the item done when it ends. */
+  autoDone: boolean
+  // Video
+  start?: number
+  end?: number
+  cues?: Cue[]
+  /** 0..1 */
+  volume?: number
+  endAction?: EndAction
+  /** Fade picture and sound in and out (1 s). */
+  fade?: boolean
+  // Image
+  fit?: ImageFit
+  /** Go to the next item after this many seconds. */
+  autoNext?: number | null
+}
+
 /** State of the local cached copy of an item's file. */
 export type CacheState = 'copying' | 'ready' | 'error'
 
@@ -106,6 +136,11 @@ export interface ServiceItem {
   status: ItemStatus
   /** Video length in seconds, when known. */
   duration?: number
+  /** Width and height of the picture, when known. */
+  width?: number
+  height?: number
+  notes?: string
+  settings: ItemSettings
 }
 
 export interface Service {
@@ -122,6 +157,7 @@ export interface ContentLayer {
   itemId: string
   type: ItemType
   url: string
+  settings: ItemSettings
   /**
    * Changes every time something goes live. Groups that got the same item in
    * one "Go live" share the take, so their video is the same playback.
@@ -131,6 +167,8 @@ export interface ContentLayer {
   /** Ask outputs to jump to this time (seconds). Changes with seekId. */
   seekTo?: number
   seekId?: number
+  /** The video ended and the end action is "black" or "hold". */
+  ended?: boolean
 }
 
 /** What a group shows now, by layer (SPEC section 4). More layers come later. */
@@ -170,7 +208,7 @@ export interface ServiceState {
   /** The item that "Next" makes live (blue NEXT mark). */
   nextItemId: string | null
   overlays: Overlays
-  logoReady: boolean
+  logoUrl?: string
 }
 
 export interface AddFilesResult {
@@ -225,11 +263,12 @@ export interface MediaConsoleApi {
   setDuration(itemId: string, seconds: number): Promise<void>
   moveItem(itemId: string, toIndex: number): Promise<void>
   setItemStatus(itemId: string, status: ItemStatus): Promise<void>
+  updateItem(itemId: string, change: { notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }): Promise<void>
 
   // Live
   setTarget(target: Target): Promise<void>
-  /** Send an item to the current target. */
-  goLive(itemId: string): Promise<void>
+  /** Send an item to the current target (or one group). */
+  goLive(itemId: string, target?: Target): Promise<void>
   next(): Promise<void>
   previous(): Promise<void>
   /** Clear the content of the current target, or of one group. */

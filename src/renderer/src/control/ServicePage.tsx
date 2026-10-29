@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
-import type { ContentLayer, ServiceItem, ServiceState } from '../../../shared/types'
+import type { ContentLayer, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { useScreensState, useServiceState } from './hooks'
 import { OrderPanel, TypeIcon } from './OrderPanel'
+import { PreviewPanel } from './PreviewPanel'
 import { ScreensColumn } from './ScreensColumn'
 
 const api = window.mediaConsole
 
-/** Service order (left), selected item and live controls (center), screens (right). */
+/** Service order (left), preview and live controls (center), screens (right). */
 export function ServicePage() {
   const state = useServiceState()
   const [screens] = useScreensState()
@@ -47,7 +48,7 @@ export function ServicePage() {
     <div className="service">
       <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
       <div className="service-center">
-        <SelectedPanel item={selected} />
+        <PreviewPanel state={state} item={selected} />
         <LivePanel state={state} />
       </div>
       <ScreensColumn state={state} screens={screens} />
@@ -55,83 +56,7 @@ export function ServicePage() {
   )
 }
 
-// ---- Selected item ----
-
-function SelectedPanel({ item }: { item: ServiceItem | null }) {
-  if (!item)
-    return (
-      <section className="panel selected">
-        <h2 className="label">{strings.selectedLabel}</h2>
-        <p className="help">{strings.noSelection}</p>
-      </section>
-    )
-
-  const ready = item.cache === 'ready'
-  return (
-    <section className="panel selected">
-      <h2 className="label">{strings.selectedLabel}</h2>
-      <div className="selected-body">
-        <div className="thumb">
-          {ready && item.type === 'image' && <img src={item.url} alt="" />}
-          {ready && item.type === 'video' && <video src={`${item.url}#t=1`} preload="metadata" muted />}
-        </div>
-        <div className="selected-info">
-          <div className="selected-title">{item.title}</div>
-          <div className="dim">
-            {item.type === 'video' ? strings.typeVideo : strings.typeImage}
-            {item.type === 'video' && ` · ${formatTime(item.duration)}`}
-          </div>
-          <div className="kv">
-            <span className="label-inline">{strings.source}</span>
-            <span className="mono path">{item.path}</span>
-          </div>
-          {item.cache === 'copying' && <p className="help">{strings.notReady}</p>}
-          {item.cache === 'error' && <p className="text-live">{item.cacheError}</p>}
-          <div className="button-row">
-            <button className="btn btn-live" disabled={!ready} onClick={() => void api.goLive(item.id)}>
-              {strings.goLive}
-            </button>
-            {item.status === 'done' ? (
-              <button className="btn" onClick={() => void api.setItemStatus(item.id, 'pending')}>
-                {strings.markPending}
-              </button>
-            ) : (
-              <button className="btn" onClick={() => void api.setItemStatus(item.id, 'done')}>
-                {strings.markDone}
-              </button>
-            )}
-            {item.cache === 'error' && (
-              <button className="btn" onClick={() => void api.retryCopy(item.id)}>
-                {strings.retryCopy}
-              </button>
-            )}
-            <button className="btn btn-quiet" onClick={() => void api.removeItem(item.id)}>
-              {strings.remove}
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 // ---- Live ----
-
-export function TargetSelect({ state }: { state: ServiceState }) {
-  return (
-    <label className="target">
-      <span className="label-inline">{strings.sendTo}</span>
-      <select className="input select" value={state.target} onChange={(e) => void api.setTarget(e.target.value)}>
-        <option value="all">{strings.allScreens}</option>
-        {state.groups.map((g) => (
-          <option key={g.config.id} value={g.config.id}>
-            {g.config.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
 
 function LivePanel({ state }: { state: ServiceState }) {
   // One row of video controls per take (groups that got the same item together share one).
@@ -148,7 +73,6 @@ function LivePanel({ state }: { state: ServiceState }) {
     <section className={takes.size ? 'panel live-panel is-live' : 'panel live-panel'}>
       <div className="live-head">
         <h2 className="label">{strings.liveLabel}</h2>
-        <TargetSelect state={state} />
       </div>
       {takes.size === 0 && <p className="help">{strings.nothingLive}</p>}
       {[...takes.values()].map(({ content, groups }) => (

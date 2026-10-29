@@ -1,0 +1,41 @@
+/* One screen picture. It fills its parent: the full output window, or a small
+   16:9 box in the control window. */
+.screen-view {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+.layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Content keeps its shape (black bars if needed). */
+.media-contain {
+  object-fit: contain;
+}
+/* Backgrounds fill the screen and may be cut at the edges. */
+.media-cover {
+  object-fit: cover;
+}
+/* "Blur sides": a blurred, darker copy behind the picture. */
+.media-blur {
+  filter: blur(40px) brightness(0.6);
+  transform: scale(1.15);
+}
+.layer-black {
+  background: #000;
+}
+.layer-logo {
+  background: #000;
+  display: grid;
+  place-items: center;
+}
+.layer-logo img {
+  max-width: 60%;
+  max-height: 60%;
+  object-fit: contain;
+}

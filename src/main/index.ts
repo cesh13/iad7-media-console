@@ -179,10 +179,13 @@ function registerIpc(): void {
   ipcMain.handle('service:setDuration', (_e, id: string, seconds: number) => svc.setDuration(id, seconds))
   ipcMain.handle('service:moveItem', (_e, id: string, toIndex: number) => svc.moveItem(id, toIndex))
   ipcMain.handle('service:setItemStatus', (_e, id: string, status: ItemStatus) => svc.setItemStatus(id, status))
+  ipcMain.handle('service:updateItem', (_e, id: string, change: Parameters<typeof svc.updateItem>[1]) =>
+    svc.updateItem(id, change)
+  )
 
   // ---- Live ----
   ipcMain.handle('live:target', (_e, target: Target) => svc.setTarget(target))
-  ipcMain.handle('live:go', (_e, id: string) => svc.goLive(id))
+  ipcMain.handle('live:go', (_e, id: string, target?: Target) => svc.goLive(id, target))
   ipcMain.handle('live:next', () => svc.next())
   ipcMain.handle('live:previous', () => svc.previous())
   ipcMain.handle('live:clear', (_e, groupId?: string) => svc.clear(groupId))
@@ -213,7 +216,7 @@ function openCurrentService(): void {
   }
   svc.connectService({
     groups: () => settings.groups,
-    hasLogo: () => !!settings.logo?.url,
+    logoUrl: () => settings.logo?.url,
     onChange: (outputsChanged) => {
       sendServiceState()
       if (outputsChanged) renderOutputs()
