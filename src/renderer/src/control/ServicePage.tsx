@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ContentLayer, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { useScreensState, useServiceState } from './hooks'
-import { BiblePanel } from './BiblePanel'
+import { BibleMain, BibleSide, useBible } from './BiblePanel'
 import { LibraryMain, LibrarySide, pathDragType, type LibSelection } from './LibraryView'
 import { OrderPanel, TypeIcon } from './OrderPanel'
 import { PreviewPanel } from './PreviewPanel'
@@ -11,14 +11,22 @@ import { ScreensColumn } from './ScreensColumn'
 
 const api = window.mediaConsole
 
-/** Service order (left), preview and live controls (center), screens (right). */
+/** Order / Library / Bible tabs (left), preview and live controls (center), screens (right). */
 export function ServicePage() {
   const state = useServiceState()
   const [screens] = useScreensState()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [leftTab, setLeftTab] = useState<'order' | 'library'>('order')
+  const [leftTab, setLeftTab] = useState<'order' | 'library' | 'bible'>('order')
   const [library, setLibrary] = useState<LibSelection>({ kind: 'favorites' })
   const [dropOnOrder, setDropOnOrder] = useState(false)
+  // The Bible state lives here, so it stays the same when the tab changes.
+  const bible = useBible(state?.bibles ?? [])
+  const [bibleFocus, setBibleFocus] = useState(0)
+
+  // Ctrl+B: after the Bible tab is shown, put the cursor in its search input.
+  useEffect(() => {
+    if (bibleFocus) bible.focusSearch()
+  }, [bibleFocus])
 
   const items = state?.service.items ?? []
   const selected = items.find((i) => i.id === selectedId) ?? null
@@ -27,6 +35,13 @@ export function ServicePage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
+      // Ctrl+B: open the Bible tab and search (works from any input too).
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        setLeftTab('bible')
+        setBibleFocus((n) => n + 1)
+        return
+      }
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
       // Ctrl+Z: undo the last change to the order.
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -111,25 +126,29 @@ export function ServicePage() {
             <button className={leftTab === 'library' ? 'tab is-active' : 'tab'} onClick={() => setLeftTab('library')}>
               {strings.libraryLabel}
             </button>
+            <button
+              className={leftTab === 'bible' ? 'tab is-active' : 'tab'}
+              title={strings.bibleTabHint}
+              onClick={() => setLeftTab('bible')}
+            >
+              {strings.bibleLabel}
+            </button>
           </nav>
-          {leftTab === 'order' ? (
-            <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
-          ) : (
-            <LibrarySide state={state} selection={library} onSelect={setLibrary} />
-          )}
+          {leftTab === 'order' && <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />}
+          {leftTab === 'library' && <LibrarySide state={state} selection={library} onSelect={setLibrary} />}
+          {leftTab === 'bible' && <BibleSide state={state} bible={bible} />}
         </div>
         <div className="service-center">
-          {leftTab === 'library' ? (
+          {leftTab === 'order' && <PreviewPanel state={state} item={selected} />}
+          {leftTab === 'library' && (
             <LibraryMain state={state} selection={library} onOpenInPreview={(p) => void openInPreview(p)} />
-          ) : (
-            <PreviewPanel state={state} item={selected} />
           )}
+          {leftTab === 'bible' && <BibleMain state={state} bible={bible} />}
           <LivePanel state={state} />
         </div>
         <ScreensColumn state={state} screens={screens} />
       </div>
       <div className="service-bottom">
-        <BiblePanel state={state} />
         <QuickPanel state={state} />
       </div>
     </div>
@@ -171,6 +190,12 @@ function LivePanel({ state }: { state: ServiceState }) {
             <span className="live-title">{x.title}</span>
             <span className="mono">{x.label}</span>
             <span className="dim">→ {x.groups.join(', ')}</span>
+            <button className="btn btn-small btn-icon" title={strings.prevTextScreen} onClick={() => void api.pageStep(-1)}>
+              ‹
+            </button>
+            <button className="btn btn-small btn-icon" title={strings.nextTextScreen} onClick={() => void api.pageStep(1)}>
+              ›
+            </button>
             <button className="btn btn-small btn-quiet" onClick={() => void api.clearText()}>
               {strings.clearTextShort}
             </button>

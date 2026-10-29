@@ -202,6 +202,8 @@ export const strings = {
 
   // Bible panel
   bibleLabel: 'Bible',
+  bibleTabHint: 'Bible (Ctrl+B: open and search)',
+  bibleEmptyMain: 'Add a Bible version first (left column).',
   noBible:
     'No Bible version yet. Download a free version (for example Reina Valera 1909), or import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text.',
   downloadVersion: 'Download a version…',
@@ -393,7 +395,9 @@ export const strings = {
   previous: 'Previous',
   next: 'Next',
   clear: 'Clear',
-  keysHelp: 'Space: next item · ← →: slides · Esc: clear',
+  keysHelp: 'Space: next item · ← →: slides or verses · Ctrl+B: Bible · Esc: clear',
+  prevTextScreen: 'Previous verse or text screen (←)',
+  nextTextScreen: 'Next verse or text screen (→)',
 
   // Screens column
   screensColumn: 'Screens',

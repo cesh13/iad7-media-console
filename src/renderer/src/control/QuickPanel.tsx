@@ -7,7 +7,7 @@ import { MessageTab, StageTab } from './StageTab'
 
 type Tab = 'audio' | 'message' | 'stage'
 
-/** Bottom right: Audio / Message / Stage tabs (SPEC 5.6). */
+/** Bottom strip: hotkeys and Audio / Message / Stage tabs (SPEC 5.6). */
 export function QuickPanel({ state }: { state: ServiceState }) {
   const [tab, setTab] = useState<Tab>('audio')
   const tabs: [Tab, string][] = [

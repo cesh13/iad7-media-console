@@ -12,7 +12,8 @@ the design tool runtime (`support.js`).
 ## Files
 - `Main.dc.html` — main console: top bar, order + shared folder (left),
   preview (center), screens (right), Bible picker (bottom left),
-  hotkeys + Audio / Message / Stage tabs (bottom right).
+  hotkeys + Audio / Message / Stage tabs (bottom right). Note: the Bible
+  picker is now a tab next to Order and Library (SPEC 5.5), not at the bottom.
 - `Preview-Video.dc.html` — center preview for a video.
 - `Preview-Song.dc.html` — center preview for a song.
 - `Preview-Bible.dc.html` — center preview for a Bible reading.

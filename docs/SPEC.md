@@ -107,7 +107,7 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - App name, service selector, source folder path, clock and elapsed time.
 - Buttons: **Logo**, **Clear text**, **Black screen (all)**.
 
-### 5.2 Left panel: Order / Library tabs
+### 5.2 Left panel: Order / Library / Bible tabs
 
 **Order tab**
 - Items grouped by section. Each row: status, type icon, title, length or count.
@@ -168,14 +168,24 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - New screens appear at the bottom with "add to a group".
 - "Edit groups" opens the group settings (screens per group, idle screen).
 
-### 5.5 Bottom left: Bible
+### 5.5 Bible tab
+- A third tab next to Order and Library. Like Library, it uses the left column
+  (search, version, picker, "Today" chips, Text style / Download / Import) and
+  the center (location bar, Add to order, Show now, verse list). The Live panel
+  and the Screens column stay visible.
+- **Ctrl+B** opens the tab and puts the cursor in the search input, from
+  anywhere.
+- The Bible state (passage, selection, search) stays the same when the operator
+  switches tabs.
+- The Live panel row of live text has ‹ › buttons (same as ← →), so the
+  operator can move verse by verse from the Order tab too.
 - Search input: "jn 3 16", "sal 23:1-4", or words. Spanish short book names.
 - Version selector. Use only public-domain or licensed versions (RV1909 is
   public domain).
 - Location bar: "Libros › Salmos › 23 › 1", with previous/next chapter buttons.
   Each part is clickable and goes back to that step.
 - "Today" chips: references already used in this service.
-- **Picker in one area with a fixed height (236 px)**, one step at a time:
+- **Picker in one area with a fixed height (300 px)**, one step at a time:
   1. Libro: 66 books, AT and NT, colored by type (Ley, Historia, Poesía,
      Profetas, Evangelios, Cartas y Apocalipsis).
   2. Capítulo: chapter numbers of the selected book.
@@ -185,7 +195,7 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Verse list on the right with LIVE and NEXT marks. ↑ ↓ move verse by verse.
 - Buttons: Add to order, Show now.
 
-### 5.6 Bottom right: Hotkeys + Audio / Message / Stage tabs
+### 5.6 Bottom: Hotkeys + Audio / Message / Stage tabs
 - **Hotkeys:** 8 buttons F1–F8 (logo, prayer background, offering video…).
   One press = live now. Edited in Library › ★ Favorites.
 - **Audio tab:**
