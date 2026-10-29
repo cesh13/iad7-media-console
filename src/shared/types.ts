@@ -55,6 +55,8 @@ export interface Settings {
   groups: GroupConfig[]
   logo?: MediaRef
   currentServiceId?: string
+  /** The watched shared folder, for example \\MEDIA-PC\Compartida. */
+  sharedFolder?: string
 }
 
 /** A saved output, and the screen it matches now (if any). */
@@ -216,6 +218,35 @@ export interface ServiceItem {
   child?: ServiceItem
   /** Folder: number of files and index progress (0..1 while indexing, null when ready). */
   folder?: { count: number; progress: number | null }
+}
+
+/** One file or subfolder in the shared folder. */
+export interface SharedEntry {
+  /** Path inside the shared folder, with "/". */
+  rel: string
+  path: string
+  name: string
+  /** rel of the folder it is in ('' = the shared folder itself). */
+  parent: string
+  dir: boolean
+  type: ItemType | null
+  /** Not seen yet by the team (dot, "N NEW"). */
+  isNew: boolean
+  /** Last change time of the file (ms). */
+  mtime?: number
+  /** Files: waiting, copying, converting, rendering, ready or error. */
+  state: 'waiting' | CacheState
+  progress?: number
+  error?: string
+  /** Folders: true when nothing inside changed for a few seconds. */
+  ready?: boolean
+}
+
+export interface SharedState {
+  root: string | null
+  status: 'off' | 'watching' | 'unreachable'
+  error?: string
+  entries: SharedEntry[]
 }
 
 /** One file in a folder item (for example one hymn). */
@@ -381,6 +412,18 @@ export interface MediaConsoleApi {
   moveItem(itemId: string, toIndex: number): Promise<void>
   setItemStatus(itemId: string, status: ItemStatus): Promise<void>
   updateItem(itemId: string, change: { notes?: string; settings?: Partial<ItemSettings>; width?: number; height?: number }): Promise<void>
+
+  // Shared folder
+  getShared(): Promise<SharedState>
+  onSharedChanged(callback: (state: SharedState) => void): () => void
+  /** Show a folder dialog and watch the chosen folder. */
+  pickSharedFolder(): Promise<void>
+  /** Watch this folder (a network path like \\PC\Share works), or stop watching (null). */
+  setSharedFolder(path: string | null): Promise<void>
+  /** Add files to the order. A folder path adds all files directly in it ("All"). */
+  addSharedToOrder(paths: string[]): Promise<void>
+  /** Remove the "new" mark. No list: all files. */
+  markSharedSeen(paths?: string[]): Promise<void>
 
   // Live
   setTarget(target: Target): Promise<void>

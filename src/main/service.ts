@@ -3,7 +3,6 @@ import { existsSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { byFileName, itemType } from './fileTypes'
-import { readTextFile } from './fileText'
 import { folderStatus, openFolderIndex } from './folderIndex'
 import { refLabel } from '../shared/bibleBooks'
 import type {
@@ -24,9 +23,8 @@ import type {
   TextLayer
 } from '../shared/types'
 import { bibleDefaults, buildScreens, listBibles } from './bible'
-import { cacheFile, mediaUrl } from './cache'
-import { renderPdfPages } from './pdfPages'
-import { convertToPdf } from './pptx'
+import { mediaUrl } from './cache'
+import { prepareFile } from './prepare'
 import { saveService } from './serviceStore'
 
 // The service order and the live state of each group. The main process owns
@@ -174,8 +172,11 @@ export function serviceState(): ServiceState {
 /** A dropped folder with more files than this becomes one searchable folder item. */
 const folderItemThreshold = 30
 
-/** Add files. A folder adds the files inside it (not subfolders), in file-name order. */
-export async function addFiles(paths: string[]): Promise<AddFilesResult> {
+/**
+ * Add files. A folder adds the files inside it (not subfolders), in file-name
+ * order; a big folder becomes one folder item, unless `asFiles` is set.
+ */
+export async function addFiles(paths: string[], asFiles = false): Promise<AddFilesResult> {
   const files: string[] = []
   let folders = 0
   for (const p of [...paths].sort(byFileName)) {
@@ -185,7 +186,7 @@ export async function addFiles(paths: string[]): Promise<AddFilesResult> {
       const entries = await readdir(p, { withFileTypes: true })
       const inside = entries.filter((e) => e.isFile()).map((e) => join(p, e.name)).sort(byFileName)
       // A big folder (the hymnal) is one item with search; a small folder adds its files.
-      if (inside.filter((f) => itemType(f)).length > folderItemThreshold) {
+      if (!asFiles && inside.filter((f) => itemType(f)).length > folderItemThreshold) {
         addFolder(p)
         folders++
       } else {
@@ -264,48 +265,19 @@ function refreshFolders(): void {
   for (const item of service.items) if (item.type === 'folder') item.folder = folderStatus(item.path)
 }
 
-/** Split song text into stanzas at empty lines. */
-function stanzas(text: string): string[] {
-  return text
-    .replace(/\r/g, '')
-    .split(/\n\s*\n/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
 
 function startCopy(item: ServiceItem): void {
   item.cache = 'copying'
   item.cacheProgress = 0
   item.cacheError = undefined
   item.url = undefined
-  const progress = (fraction: number) => {
+  prepareFile(item.path, item.type, (state, fraction) => {
+    item.cache = state
     item.cacheProgress = fraction
     changed({ save: false, outputs: false })
-  }
-  cacheFile(item.path, progress)
-    .then(async (cached) => {
-      item.localCopyPath = cached
-      if (item.type === 'song') {
-        item.stanzas = stanzas(await readTextFile(cached))
-        item.url = mediaUrl(cached)
-      } else if (item.type === 'slides') {
-        // .pptx: convert to PDF first. Then make one picture per page.
-        let pdf = cached
-        if (!cached.toLowerCase().endsWith('.pdf')) {
-          item.cache = 'converting'
-          item.cacheProgress = undefined
-          changed({ save: false, outputs: false })
-          pdf = await convertToPdf(cached)
-        }
-        item.cache = 'rendering'
-        progress(0)
-        const pages = await renderPdfPages(pdf, progress)
-        item.pageUrls = pages.pageUrls
-        item.pageTexts = pages.texts
-        item.url = pages.pageUrls[0]
-      } else {
-        item.url = mediaUrl(cached)
-      }
+  })
+    .then((p) => {
+      Object.assign(item, p)
       item.cache = 'ready'
       item.cacheProgress = undefined
       changed()

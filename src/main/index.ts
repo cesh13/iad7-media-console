@@ -25,6 +25,7 @@ import { loadPage, preloadPath } from './pages'
 import { handleMediaScheme, registerMediaScheme } from './protocol'
 import { onFolderIndexChanged, searchFolder } from './folderIndex'
 import { closePdfWindow } from './pdfPages'
+import * as shared from './sharedFolder'
 import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
@@ -207,6 +208,25 @@ function registerIpc(): void {
     svc.updateItem(id, change)
   )
 
+  // ---- Shared folder ----
+  ipcMain.handle('shared:get', () => shared.sharedState())
+  ipcMain.handle('shared:pick', async () => {
+    if (!controlWindow) return
+    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'] })
+    if (!result.canceled && result.filePaths[0]) setShared(result.filePaths[0])
+  })
+  ipcMain.handle('shared:set', (_e, path: string | null) => setShared(path))
+  ipcMain.handle('shared:add', async (_e, paths: string[]) => {
+    // A folder of the share adds its files one by one ("All"), in file-name order.
+    const files = paths.flatMap((p) => {
+      const entry = shared.sharedState().entries.find((e) => e.path === p)
+      return entry?.dir ? shared.sharedFilesIn(entry.rel) : [p]
+    })
+    await svc.addFiles(files, true)
+    shared.markSeen(files)
+  })
+  ipcMain.handle('shared:seen', (_e, paths?: string[]) => shared.markSeen(paths))
+
   // ---- Live ----
   ipcMain.handle('live:target', (_e, target: Target) => svc.setTarget(target))
   ipcMain.handle('live:go', (_e, id: string, target?: Target, page?: number) => svc.goLive(id, target, page))
@@ -247,6 +267,12 @@ function registerIpc(): void {
   ipcMain.handle('bible:screens', (_e, ref: BibleRef, settings: Partial<ItemSettings>) => svc.bibleScreens(ref, settings))
 
   ipcMain.on('output:playback', (_e, info: PlaybackInfo & { ended: boolean }) => svc.reportPlayback(info))
+}
+
+function setShared(path: string | null): void {
+  settings.sharedFolder = path?.trim() || undefined
+  saveSettings(settings)
+  shared.setSharedFolder(settings.sharedFolder ?? null)
 }
 
 function watchScreens(): void {
@@ -297,6 +323,8 @@ if (!app.requestSingleInstanceLock()) {
     watchScreens()
     onOutputWindowLost(syncOutputs)
     onFolderIndexChanged(() => sendServiceState())
+    shared.onSharedChanged(() => controlWindow?.webContents.send('shared:changed', shared.sharedState()))
+    if (settings.sharedFolder) shared.setSharedFolder(settings.sharedFolder)
     createControlWindow()
     syncOutputs()
   })
@@ -304,6 +332,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     allowOutputWindowsToClose()
     closePdfWindow()
+    shared.stopShared()
     svc.flushSave()
   })
 

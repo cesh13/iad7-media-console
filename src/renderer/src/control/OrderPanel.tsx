@@ -2,6 +2,7 @@ import { useState, type DragEvent } from 'react'
 import type { ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { FolderBox } from './FolderBox'
+import { SharedSection } from './SharedSection'
 
 const api = window.mediaConsole
 const itemDragType = 'application/x-media-console-item'
@@ -74,6 +75,7 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
           />
         ))}
         {dropActive && <div className="drop-hint">{strings.dropHere}</div>}
+        <SharedSection state={state} />
       </div>
 
       {/* Read the size of pictures and the length of videos once. */}

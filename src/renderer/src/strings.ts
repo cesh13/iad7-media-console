@@ -49,6 +49,35 @@ export const strings = {
   fileCount: (n: number) => `${n} files`,
   indexing: (fraction: number) => `indexing ${Math.round(fraction * 100)}%`,
   addFolder: 'Add folder',
+
+  // Shared folder
+  sharedLabel: 'Shared folder',
+  sharedHelp:
+    'Watch a network folder (for example \\\\MEDIA-PC\\Compartida). New files are copied and converted at once, so they are ready for the service.',
+  sharedPathPlaceholder: '\\\\MEDIA-PC\\Compartida',
+  watch: 'Watch',
+  chooseFolder: 'Choose…',
+  watching: 'Watching',
+  unreachable: 'Not reachable',
+  stopWatching: 'Stop watching this folder',
+  markSeen: 'Seen',
+  newCount: (n: number) => `${n} NEW`,
+  all: 'All',
+  allHint: 'Add all files of this folder to the order, in file-name order',
+  sharedDirState: (files: number, ready: boolean) => ` ${files} files · ${ready ? 'all ready' : 'copying… wait'}`,
+  sharedEmpty: 'The folder is empty.',
+  sharedRetry: 'Trying again every 15 seconds…',
+  inOrder: 'in order ✓',
+  ready: 'ready',
+  waiting: 'waiting',
+  prepareStates: { copying: 'copying', converting: 'converting', rendering: 'making pages' } as Record<string, string>,
+  ago: (ms: number) => {
+    const min = Math.round(ms / 60000)
+    if (min < 1) return 'now'
+    if (min < 60) return `${min} min ago`
+    const h = Math.round(min / 60)
+    return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`
+  },
   addFolderHint: 'Add a folder as one item with search (for example the hymnal)',
   folderSearchPlaceholder: 'Number, title or words of the song',
   folderNoResults: 'No files found.',

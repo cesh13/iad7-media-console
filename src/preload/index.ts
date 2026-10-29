@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
-import type { MediaConsoleApi, OutputRender, PdfJob, ScreensState, ServiceState, TestInfo } from '../shared/types'
+import type {
+  MediaConsoleApi,
+  OutputRender,
+  PdfJob,
+  ScreensState,
+  ServiceState,
+  SharedState,
+  TestInfo
+} from '../shared/types'
 
 function listen<T>(channel: string, callback: (value: T) => void): () => void {
   const handler = (_e: IpcRendererEvent, value: T): void => callback(value)
@@ -41,6 +49,14 @@ const api: MediaConsoleApi = {
   moveItem: (id, toIndex) => invoke('service:moveItem', id, toIndex),
   setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
   updateItem: (id, change) => invoke('service:updateItem', id, change),
+
+  // Shared folder
+  getShared: () => invoke('shared:get'),
+  onSharedChanged: (cb) => listen<SharedState>('shared:changed', cb),
+  pickSharedFolder: () => invoke('shared:pick'),
+  setSharedFolder: (path) => invoke('shared:set', path),
+  addSharedToOrder: (paths) => invoke('shared:add', paths),
+  markSharedSeen: (paths) => invoke('shared:seen', paths),
 
   // Live
   setTarget: (target) => invoke('live:target', target),
