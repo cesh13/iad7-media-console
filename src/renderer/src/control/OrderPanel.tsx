@@ -72,7 +72,7 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
 
       {/* Read the size of pictures and the length of videos once. */}
       {items
-        .filter((i) => i.url && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
+        .filter((i) => i.url && i.type !== 'slides' && (i.width === undefined || (i.type === 'video' && i.duration === undefined)))
         .map((i) =>
           i.type === 'video' ? (
             <video
@@ -144,9 +144,14 @@ function OrderRow(props: {
       <TypeIcon type={item.type} />
       <span className="row-title">{item.title}</span>
       <span className="row-meta mono">
-        {item.cache === 'copying' && strings.copying(item.cacheProgress ?? 0)}
-        {item.cache === 'error' && <span className="text-live">{strings.copyError}</span>}
+        {item.cache !== 'ready' && item.cache !== 'error' && strings.cacheStates(item)}
+        {item.cache === 'error' && (
+          <span className="text-live" title={item.cacheError}>
+            {strings.copyError}
+          </span>
+        )}
         {item.cache === 'ready' && item.type === 'video' && formatTime(item.duration)}
+        {item.cache === 'ready' && item.type === 'slides' && strings.slideCount(item.pageUrls?.length ?? 0)}
       </span>
     </div>
   )
@@ -168,8 +173,13 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 
 export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
   return (
-    <span className="type-icon" title={type === 'video' ? strings.typeVideo : strings.typeImage}>
-      {type === 'video' ? (
+    <span className="type-icon" title={strings.types[type]}>
+      {type === 'slides' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <rect x="3" y="4" width="18" height="12" rx="1.5" />
+          <path d="M12 16v4M8 20h8M7 8h6M7 11h10" />
+        </svg>
+      ) : type === 'video' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <rect x="3" y="5" width="18" height="14" rx="2" />
           <path d="M10 9l5 3-5 3z" fill="currentColor" />

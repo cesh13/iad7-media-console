@@ -35,6 +35,7 @@ export function ScreenView(props: ScreenViewProps) {
     <div className="screen-view">
       {!content && <IdleScreen idle={props.idle} logoUrl={props.logoUrl} />}
       {content?.type === 'image' && <ImageContent key={content.take} content={content} />}
+      {content?.type === 'slides' && <SlidesContent key={content.take} content={content} />}
       {content?.type === 'video' && (
         <VideoContent
           key={content.take}
@@ -99,6 +100,24 @@ function ImageContent({ content }: { content: ContentLayer }) {
       <img className={fit === 'fill' ? 'layer media-cover' : 'layer media-contain'} src={content.url} alt="" />
     </>
   )
+}
+
+/**
+ * One page of the slides. All pages are loaded when the slides go live, so
+ * the next page shows at once, without a black flash.
+ */
+function SlidesContent({ content }: { content: ContentLayer }) {
+  const urls = content.pageUrls ?? [content.url]
+  const page = Math.min(content.page ?? 0, urls.length - 1)
+  useEffect(() => {
+    const images = urls.map((url) => {
+      const img = new Image()
+      img.src = url
+      return img
+    })
+    return () => images.forEach((img) => (img.src = ''))
+  }, [urls.join('|')])
+  return <img className="layer media-contain" src={urls[page]} alt="" />
 }
 
 function VideoContent(props: {

@@ -12,6 +12,7 @@ import {
 } from './outputWindows'
 import { loadPage, preloadPath } from './pages'
 import { handleMediaScheme, registerMediaScheme } from './protocol'
+import { closePdfWindow } from './pdfPages'
 import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
@@ -29,6 +30,7 @@ let settings: Settings
 let controlWindow: BrowserWindow | null = null
 
 const mediaExtensions = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+const orderExtensions = [...mediaExtensions, 'pdf', 'pptx', 'ppt', 'ppsx', 'pps', 'odp']
 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
 
 registerMediaScheme()
@@ -170,7 +172,7 @@ function registerIpc(): void {
   // ---- Service order ----
   ipcMain.handle('service:get', () => svc.serviceState())
   ipcMain.handle('service:pickFiles', async () => {
-    const paths = await pickPaths({ multi: true, extensions: mediaExtensions, name: 'Video and images' })
+    const paths = await pickPaths({ multi: true, extensions: orderExtensions, name: 'Video, images and slides' })
     return paths.length ? svc.addFiles(paths) : { added: 0, skipped: [] }
   })
   ipcMain.handle('service:addFiles', (_e, paths: string[]) => svc.addFiles(paths))
@@ -185,7 +187,9 @@ function registerIpc(): void {
 
   // ---- Live ----
   ipcMain.handle('live:target', (_e, target: Target) => svc.setTarget(target))
-  ipcMain.handle('live:go', (_e, id: string, target?: Target) => svc.goLive(id, target))
+  ipcMain.handle('live:go', (_e, id: string, target?: Target, page?: number) => svc.goLive(id, target, page))
+  ipcMain.handle('live:pageStep', (_e, delta: number) => svc.pageStep(delta))
+  ipcMain.handle('live:showPage', (_e, id: string, page: number) => svc.showPage(id, page))
   ipcMain.handle('live:next', () => svc.next())
   ipcMain.handle('live:previous', () => svc.previous())
   ipcMain.handle('live:clear', (_e, groupId?: string) => svc.clear(groupId))
@@ -249,6 +253,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     allowOutputWindowsToClose()
+    closePdfWindow()
     svc.flushSave()
   })
 

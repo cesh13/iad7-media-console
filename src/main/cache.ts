@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { createHash } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs'
 import { rename, stat, unlink } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { extname, join, relative, sep } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
 /**
@@ -55,7 +55,8 @@ export async function cacheFile(source: string, onProgress: (fraction: number) =
   return target
 }
 
-/** The URL output windows use to load a cached file. See protocol.ts. */
+/** The URL windows use to load a cached file (also files in subfolders of the cache). See protocol.ts. */
 export function mediaUrl(cachedPath: string): string {
-  return `media://cache/${encodeURIComponent(basename(cachedPath))}`
+  const parts = relative(cacheDir(), cachedPath).split(sep).map(encodeURIComponent)
+  return `media://cache/${parts.join('/')}`
 }

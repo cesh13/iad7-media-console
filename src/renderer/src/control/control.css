@@ -65,6 +65,7 @@
 }
 
 .btn {
+  white-space: nowrap;
   min-height: 32px;
   padding: 0 14px;
   background: var(--bg-button);
@@ -869,4 +870,47 @@
 .group-col {
   overflow-y: auto;
   width: 280px;
+}
+
+/* ---- Step 5: slides ---- */
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding: 2px;
+}
+.thumb-page {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  background: #000;
+  border: 2px solid var(--border-panel);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.thumb-page img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.thumb-page.is-preview {
+  border-color: var(--preview);
+}
+.thumb-page.is-live {
+  border-color: var(--live);
+}
+.thumb-num {
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 3px;
 }

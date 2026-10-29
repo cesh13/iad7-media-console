@@ -51,6 +51,7 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
   const [playing, setPlaying] = useState(false)
   const [seek, setSeek] = useState<{ to: number; id: number } | null>(null)
   const [time, setTime] = useState<PlaybackReport | null>(null)
+  const [page, setPage] = useState(0)
   const seekCounter = useRef(0)
 
   const set = (settings: Partial<ItemSettings>) => void api.updateItem(item.id, { settings })
@@ -66,11 +67,14 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
         take: -1,
         playing,
         seekTo: seek?.to,
-        seekId: seek?.id
+        seekId: seek?.id,
+        page,
+        pageUrls: item.pageUrls
       }
     : null
 
-  const liveTake = state.groups.map((g) => g.live.content).find((c) => c?.itemId === item.id)?.take
+  const liveContent = state.groups.map((g) => g.live.content).find((c) => c?.itemId === item.id)
+  const liveTake = liveContent?.take
 
   return (
     <section className="panel preview">
@@ -81,7 +85,7 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
           <span className="dim mono">{metaLine(item)}</span>
         </div>
         <TargetSelect state={state} />
-        <button className="btn btn-live" disabled={!ready} onClick={() => void api.goLive(item.id)}>
+        <button className="btn btn-live" disabled={!ready} onClick={() => void api.goLive(item.id, undefined, page)}>
           {strings.goLive} ⏎
         </button>
       </div>
@@ -114,6 +118,9 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
         />
       )}
       {item.type === 'image' && <ImageOptions item={item} set={set} />}
+      {item.type === 'slides' && ready && (
+        <SlidesOptions item={item} page={page} livePage={liveContent?.page} onPage={setPage} set={set} />
+      )}
 
       <div className="preview-common">
         <label className="field-col">
@@ -155,7 +162,8 @@ function metaLine(item: ServiceItem): string {
   const parts: string[] = []
   if (item.width && item.height) parts.push(`${item.width}×${item.height}`)
   if (item.type === 'video') parts.push(formatTime(item.duration))
-  parts.push(item.cache === 'ready' ? strings.localCopyOk : item.cache === 'copying' ? strings.copying(item.cacheProgress ?? 0) : strings.copyError)
+  if (item.type === 'slides' && item.pageUrls) parts.push(strings.slideCount(item.pageUrls.length))
+  parts.push(item.cache === 'ready' ? strings.localCopyOk : strings.cacheStates(item))
   return parts.join(' · ')
 }
 
@@ -314,6 +322,76 @@ function VideoOptions(props: {
                 {strings.endActions[a]}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Slides ----
+
+function SlidesOptions(props: {
+  item: ServiceItem
+  page: number
+  livePage?: number
+  onPage: (page: number) => void
+  set: (s: Partial<ItemSettings>) => void
+}) {
+  const { item, page, livePage, onPage, set } = props
+  const urls = item.pageUrls ?? []
+  const s = item.settings
+  return (
+    <div className="slides-options">
+      <div className="video-controls">
+        <button className="btn" disabled={page === 0} onClick={() => onPage(page - 1)}>
+          ← {strings.prevPage}
+        </button>
+        <span className="mono">{strings.pageOf(page + 1, urls.length)}</span>
+        <button className="btn" disabled={page >= urls.length - 1} onClick={() => onPage(page + 1)}>
+          {strings.nextPage} →
+        </button>
+        <span className="dim small">{strings.slidesHelp}</span>
+      </div>
+      <div className="thumbs">
+        {urls.map((url, i) => (
+          <button
+            key={url}
+            className={['thumb-page', i === page ? 'is-preview' : '', i === livePage ? 'is-live' : ''].join(' ')}
+            onClick={() => onPage(i)}
+            onDoubleClick={() => void api.showPage(item.id, i)}
+            title={item.pageTexts?.[i]}
+          >
+            <img src={url} alt="" loading="lazy" />
+            <span className="thumb-num mono">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+      <div className="option-grid">
+        <div className="option">
+          <span className="label-inline">{strings.autoNextLabel}</span>
+          <div className="button-row tight">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={!!s.autoAdvance}
+                onChange={(e) => set({ autoAdvance: e.target.checked ? 8 : null })}
+              />
+              {strings.autoAdvanceEvery}
+            </label>
+            <input
+              className="input input-num"
+              type="number"
+              min={1}
+              disabled={!s.autoAdvance}
+              value={s.autoAdvance ?? 8}
+              onChange={(e) => set({ autoAdvance: Math.max(1, Number(e.target.value)) })}
+            />
+            <span className="dim">s</span>
+            <label className="check">
+              <input type="checkbox" checked={!!s.loop} onChange={(e) => set({ loop: e.target.checked })} />
+              {strings.loopSlides}
+            </label>
           </div>
         </div>
       </div>

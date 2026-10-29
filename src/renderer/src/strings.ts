@@ -1,4 +1,4 @@
-import type { EndAction, IdleKind, ImageFit } from '../../shared/types'
+import type { EndAction, IdleKind, ImageFit, ItemType, ServiceItem } from '../../shared/types'
 
 // All UI text lives here, so it can be translated later.
 
@@ -41,9 +41,19 @@ export const strings = {
   badgeLive: 'LIVE',
   badgeNext: 'NEXT',
   copying: (fraction: number) => `copying ${Math.round(fraction * 100)}%`,
-  copyError: 'copy failed',
+  copyError: 'error',
   typeVideo: 'Video',
   typeImage: 'Image',
+  types: { video: 'Video', image: 'Image', slides: 'Slides' } as Record<ItemType, string>,
+  slideCount: (n: number) => (n === 1 ? '1 slide' : `${n} slides`),
+  cacheStates: (item: ServiceItem): string => {
+    const pct = Math.round((item.cacheProgress ?? 0) * 100)
+    if (item.cache === 'copying') return `copying ${pct}%`
+    if (item.cache === 'converting') return 'converting to PDF…'
+    if (item.cache === 'rendering') return `making pages ${pct}%`
+    if (item.cache === 'error') return 'error'
+    return ''
+  },
 
   // Selected item
   selectedLabel: 'Selected',
@@ -83,6 +93,12 @@ export const strings = {
   verticalNote: 'The picture is vertical, so "Fit" adds black bars at the sides.',
   autoNextLabel: 'Auto-advance',
   autoNextAfter: 'Next item after',
+  prevPage: 'Previous page',
+  nextPage: 'Next page',
+  pageOf: (n: number, total: number) => `page ${n} of ${total}`,
+  slidesHelp: 'Click a page to preview it. Double-click: show it live. ← → keys change the live page.',
+  autoAdvanceEvery: 'Next page every',
+  loopSlides: 'Loop (after the last page, start again)',
 
   // Live panel
   liveLabel: 'Live',
@@ -96,7 +112,7 @@ export const strings = {
   previous: 'Previous',
   next: 'Next',
   clear: 'Clear',
-  keysHelp: 'Space: next item · Esc: clear',
+  keysHelp: 'Space: next item · ← →: slides · Esc: clear',
 
   // Screens column
   screensColumn: 'Screens',

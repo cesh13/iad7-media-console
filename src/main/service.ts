@@ -17,6 +17,8 @@ import type {
   Target
 } from '../shared/types'
 import { cacheFile, mediaUrl } from './cache'
+import { renderPdfPages } from './pdfPages'
+import { convertToPdf } from './pptx'
 import { saveService } from './serviceStore'
 
 // The service order and the live state of each group. The main process owns
@@ -33,7 +35,13 @@ export const typeByExtension: Record<string, ItemType> = {
   '.png': 'image',
   '.gif': 'image',
   '.webp': 'image',
-  '.bmp': 'image'
+  '.bmp': 'image',
+  '.pdf': 'slides',
+  '.pptx': 'slides',
+  '.ppt': 'slides',
+  '.ppsx': 'slides',
+  '.pps': 'slides',
+  '.odp': 'slides'
 }
 
 const ignoredNames = new Set(['thumbs.db', 'desktop.ini', '.ds_store'])
@@ -88,6 +96,7 @@ export function flushSave(): void {
 
 export function defaultSettings(type: ItemType): ItemSettings {
   if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
+  if (type === 'slides') return { autoDone: true, autoAdvance: null, loop: false }
   return { autoDone: true, fit: 'fit', autoNext: null }
 }
 
@@ -99,8 +108,9 @@ export function initService(loaded: Service): void {
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
     // Copy again if the app stopped during a copy, or the cache was cleared.
-    if (item.cache !== 'ready' || !item.localCopyPath || !existsSync(item.localCopyPath)) startCopy(item)
-    else item.url = mediaUrl(item.localCopyPath)
+    const pagesMissing = item.type === 'slides' && !item.pageUrls?.length
+    if (item.cache !== 'ready' || !item.localCopyPath || !existsSync(item.localCopyPath) || pagesMissing) startCopy(item)
+    else if (item.type !== 'slides') item.url = mediaUrl(item.localCopyPath)
   }
 }
 
@@ -186,13 +196,31 @@ function startCopy(item: ServiceItem): void {
   item.cacheProgress = 0
   item.cacheError = undefined
   item.url = undefined
-  cacheFile(item.path, (fraction) => {
+  const progress = (fraction: number) => {
     item.cacheProgress = fraction
     changed({ save: false, outputs: false })
-  })
-    .then((cached) => {
+  }
+  cacheFile(item.path, progress)
+    .then(async (cached) => {
       item.localCopyPath = cached
-      item.url = mediaUrl(cached)
+      if (item.type === 'slides') {
+        // .pptx: convert to PDF first. Then make one picture per page.
+        let pdf = cached
+        if (!cached.toLowerCase().endsWith('.pdf')) {
+          item.cache = 'converting'
+          item.cacheProgress = undefined
+          changed({ save: false, outputs: false })
+          pdf = await convertToPdf(cached)
+        }
+        item.cache = 'rendering'
+        progress(0)
+        const pages = await renderPdfPages(pdf, progress)
+        item.pageUrls = pages.pageUrls
+        item.pageTexts = pages.texts
+        item.url = pages.pageUrls[0]
+      } else {
+        item.url = mediaUrl(cached)
+      }
       item.cache = 'ready'
       item.cacheProgress = undefined
       changed()
@@ -261,6 +289,7 @@ export function setDuration(itemId: string, seconds: number): void {
 // ---- Live ----
 
 function isReady(item: ServiceItem): boolean {
+  if (item.type === 'slides' && !item.pageUrls?.length) return false
   return item.cache === 'ready' && !!item.url
 }
 
@@ -337,11 +366,11 @@ export function setTarget(t: Target): void {
   changed({ save: false, outputs: false })
 }
 
-export function goLive(itemId: string, t?: Target): void {
-  goLiveIn(targetGroupIds(t), itemId)
+export function goLive(itemId: string, t?: Target, page = 0): void {
+  goLiveIn(targetGroupIds(t), itemId, page)
 }
 
-function goLiveIn(groupIds: string[], itemId: string): void {
+function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
   const item = findItem(itemId)
   if (!item || !isReady(item) || groupIds.length === 0) return
   const before = liveItemIds()
@@ -349,14 +378,70 @@ function goLiveIn(groupIds: string[], itemId: string): void {
   for (const id of groupIds) {
     live.set(id, {
       ...groupLive(id),
-      content: { itemId: item.id, type: item.type, url: item.url!, settings: item.settings, take: t, playing: true }
+      content: {
+        itemId: item.id,
+        type: item.type,
+        url: item.url!,
+        settings: item.settings,
+        take: t,
+        playing: true,
+        ...(item.type === 'slides' ? { page: clampPage(item, page), pageUrls: item.pageUrls } : {})
+      }
     })
   }
   updateStatuses(before, true)
   if (item.type === 'image' && item.settings.autoNext) {
     autoNextTimers.set(t, setTimeout(() => advanceFrom(t), item.settings.autoNext * 1000))
   }
+  if (item.type === 'slides' && item.settings.autoAdvance) {
+    autoNextTimers.set(t, setInterval(() => stepTake(t, 1), item.settings.autoAdvance * 1000))
+  }
   changed()
+}
+
+function clampPage(item: ServiceItem, page: number): number {
+  return Math.max(0, Math.min(page, (item.pageUrls?.length ?? 1) - 1))
+}
+
+/**
+ * Move the slides of one take forward or back. After the last page: start
+ * again (loop), or go to the next item. Before the first page: stay.
+ */
+function stepTake(t: number, delta: number): void {
+  const groupIds = groupsWithTake(t)
+  const content = groupIds.length ? live.get(groupIds[0])!.content : null
+  const item = content && findItem(content.itemId)
+  if (!content || !item || content.type !== 'slides') return
+  const count = item.pageUrls?.length ?? 1
+  let page = (content.page ?? 0) + delta
+  if (page >= count) {
+    if (!item.settings.loop) return advanceFrom(t)
+    page = 0
+  }
+  page = Math.max(0, page)
+  for (const id of groupIds) live.get(id)!.content!.page = page
+  changed({ save: false })
+}
+
+/** ← → keys: change the page of the slides that are live in the target. */
+export function pageStep(delta: number): void {
+  const takes = new Set(
+    targetGroupIds()
+      .map((id) => groupLive(id).content)
+      .filter((c) => c?.type === 'slides')
+      .map((c) => c!.take)
+  )
+  for (const t of takes) stepTake(t, delta)
+}
+
+/** Show one page. If the slides are not live in the target, they go live at that page. */
+export function showPage(itemId: string, page: number): void {
+  const item = findItem(itemId)
+  if (!item) return
+  const ids = targetGroupIds().filter((id) => groupLive(id).content?.itemId === itemId)
+  if (ids.length === 0) return goLive(itemId, undefined, page)
+  for (const id of ids) live.get(id)!.content!.page = clampPage(item, page)
+  changed({ save: false })
 }
 
 function groupsWithTake(t: number): string[] {

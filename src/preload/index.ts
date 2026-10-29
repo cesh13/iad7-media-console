@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
-import type { MediaConsoleApi, OutputRender, ScreensState, ServiceState, TestInfo } from '../shared/types'
+import type { MediaConsoleApi, OutputRender, PdfJob, ScreensState, ServiceState, TestInfo } from '../shared/types'
 
 function listen<T>(channel: string, callback: (value: T) => void): () => void {
   const handler = (_e: IpcRendererEvent, value: T): void => callback(value)
@@ -41,7 +41,9 @@ const api: MediaConsoleApi = {
 
   // Live
   setTarget: (target) => invoke('live:target', target),
-  goLive: (id, target) => invoke('live:go', id, target),
+  goLive: (id, target, page) => invoke('live:go', id, target, page),
+  pageStep: (delta) => invoke('live:pageStep', delta),
+  showPage: (id, page) => invoke('live:showPage', id, page),
   next: () => invoke('live:next'),
   previous: () => invoke('live:previous'),
   clear: (groupId) => invoke('live:clear', groupId),
@@ -51,7 +53,13 @@ const api: MediaConsoleApi = {
 
   // Output windows
   onOutputRender: (cb) => listen<OutputRender>('output:render', cb),
-  reportPlayback: (info) => ipcRenderer.send('output:playback', info)
+  reportPlayback: (info) => ipcRenderer.send('output:playback', info),
+
+  // Hidden PDF window
+  onPdfJob: (cb) => listen<PdfJob>('pdf:job', cb),
+  pdfPage: (id, index, count, png, text) => ipcRenderer.send('pdf:page', id, index, count, png, text),
+  pdfDone: (id, error) => ipcRenderer.send('pdf:done', id, error),
+  pdfReady: () => ipcRenderer.send('pdf:ready')
 }
 
 contextBridge.exposeInMainWorld('mediaConsole', api)

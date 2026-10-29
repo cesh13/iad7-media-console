@@ -1,6 +1,6 @@
 import { protocol } from 'electron'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { extname, relative, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { cacheDir } from './cache'
 
@@ -15,7 +15,8 @@ const mimeTypes: Record<string, string> = {
   '.png': 'image/png',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
-  '.bmp': 'image/bmp'
+  '.bmp': 'image/bmp',
+  '.pdf': 'application/pdf'
 }
 
 /** Must run before the app is ready. */
@@ -26,19 +27,22 @@ export function registerMediaScheme(): void {
 }
 
 /**
- * Serve files from the media cache as media://cache/<file name>.
+ * Serve files from the media cache as media://cache/<path in the cache>.
  * Only files inside the cache folder can be loaded. Range requests are
  * supported, so the video player can jump to any time.
  */
 export function handleMediaScheme(): void {
   protocol.handle('media', (request) => {
     const url = new URL(request.url)
-    const name = basename(decodeURIComponent(url.pathname))
-    const file = join(cacheDir(), name)
-    if (url.hostname !== 'cache' || !existsSync(file)) return new Response('Not found', { status: 404 })
-
+    const root = cacheDir()
+    const file = resolve(root, ...url.pathname.split('/').filter(Boolean).map(decodeURIComponent))
+    // Only files inside the cache folder: no "..", no other folders.
+    const inside = relative(root, file)
+    if (url.hostname !== 'cache' || !inside || inside.startsWith('..') || !existsSync(file)) {
+      return new Response('Not found', { status: 404 })
+    }
     const size = statSync(file).size
-    const type = mimeTypes[extname(name).toLowerCase()] ?? 'application/octet-stream'
+    const type = mimeTypes[extname(file).toLowerCase()] ?? 'application/octet-stream'
     const range = /bytes=(\d*)-(\d*)/.exec(request.headers.get('range') ?? '')
 
     if (!range) {

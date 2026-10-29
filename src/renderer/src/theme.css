@@ -6,7 +6,9 @@
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 
+/* Dark scroll bars and form controls. */
 :root {
+  color-scheme: dark;
   --bg-page: #101215;
   --bg-panel: #16191d;
   --bg-card: #1c1f24;

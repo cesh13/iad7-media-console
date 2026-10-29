@@ -6,7 +6,7 @@ export function preloadPath(): string {
 }
 
 /** Load a renderer page: from the Vite dev server in dev, from files in a build. */
-export function loadPage(win: BrowserWindow, page: 'index' | 'output', query: Record<string, string> = {}): void {
+export function loadPage(win: BrowserWindow, page: 'index' | 'output' | 'pdf', query: Record<string, string> = {}): void {
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   if (devUrl) {
     const search = new URLSearchParams(query).toString()

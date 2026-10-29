@@ -82,7 +82,7 @@ export interface TestInfo {
 // ---- Service order (SPEC section 4) ----
 
 /** Item types supported so far. More types come in later steps. */
-export type ItemType = 'video' | 'image'
+export type ItemType = 'video' | 'image' | 'slides'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
 
@@ -114,10 +114,18 @@ export interface ItemSettings {
   fit?: ImageFit
   /** Go to the next item after this many seconds. */
   autoNext?: number | null
+  // Slides
+  /** Go to the next page every N seconds. */
+  autoAdvance?: number | null
+  /** After the last page, start again at the first page. */
+  loop?: boolean
 }
 
-/** State of the local cached copy of an item's file. */
-export type CacheState = 'copying' | 'ready' | 'error'
+/**
+ * State of the local cached copy of an item's file. Slides also go through
+ * "converting" (.pptx to PDF) and "rendering" (PDF pages to pictures).
+ */
+export type CacheState = 'copying' | 'converting' | 'rendering' | 'ready' | 'error'
 
 export interface ServiceItem {
   id: string
@@ -141,6 +149,9 @@ export interface ServiceItem {
   height?: number
   notes?: string
   settings: ItemSettings
+  /** Slides: one picture per page (media:// URLs), and the text of each page. */
+  pageUrls?: string[]
+  pageTexts?: string[]
 }
 
 export interface Service {
@@ -158,6 +169,9 @@ export interface ContentLayer {
   type: ItemType
   url: string
   settings: ItemSettings
+  /** Slides: the page shown now (0 = first) and the pictures of all pages. */
+  page?: number
+  pageUrls?: string[]
   /**
    * Changes every time something goes live. Groups that got the same item in
    * one "Go live" share the take, so their video is the same playback.
@@ -267,8 +281,12 @@ export interface MediaConsoleApi {
 
   // Live
   setTarget(target: Target): Promise<void>
-  /** Send an item to the current target (or one group). */
-  goLive(itemId: string, target?: Target): Promise<void>
+  /** Send an item to the current target (or one group). Slides start at `page`. */
+  goLive(itemId: string, target?: Target, page?: number): Promise<void>
+  /** Slides live in the target: go forward (+1) or back (-1) one page. */
+  pageStep(delta: number): Promise<void>
+  /** Slides live in the target: show this page. */
+  showPage(itemId: string, page: number): Promise<void>
   next(): Promise<void>
   previous(): Promise<void>
   /** Clear the content of the current target, or of one group. */
@@ -280,4 +298,19 @@ export interface MediaConsoleApi {
   // Output windows
   onOutputRender(callback: (render: OutputRender) => void): () => void
   reportPlayback(info: PlaybackInfo & { ended: boolean }): void
+
+  // Hidden PDF window
+  onPdfJob(callback: (job: PdfJob) => void): () => void
+  pdfPage(jobId: number, index: number, count: number, png: Uint8Array, text: string): void
+  pdfDone(jobId: number, error: string | null): void
+  pdfReady(): void
+}
+
+/** One PDF for the hidden window to turn into page pictures. */
+export interface PdfJob {
+  id: number
+  /** The PDF file. */
+  data: Uint8Array
+  width: number
+  height: number
 }

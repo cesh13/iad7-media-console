@@ -17,7 +17,7 @@ export function ServicePage() {
   const items = state?.service.items ?? []
   const selected = items.find((i) => i.id === selectedId) ?? null
 
-  // Keys: Space next item, Esc clear, ↑ ↓ select, Enter go live.
+  // Keys: Space next item, Esc clear, ← → slides, ↑ ↓ select, Enter go live.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -28,6 +28,9 @@ export function ServicePage() {
       } else if (e.key === 'Escape') {
         e.preventDefault()
         void api.clear()
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        void api.pageStep(e.key === 'ArrowRight' ? 1 : -1)
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
         const index = items.findIndex((i) => i.id === selectedId)

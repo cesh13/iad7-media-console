@@ -40,7 +40,8 @@ function ensureCached(m: MediaRef): void {
 
 export function mediaRef(path: string): MediaRef | null {
   const type = typeByExtension[extname(path).toLowerCase()]
-  if (!type) return null
+  // Idle screens and the logo use pictures and videos only.
+  if (type !== 'image' && type !== 'video') return null
   const ref: MediaRef = { path, type }
   ensureCached(ref)
   return ref
