@@ -27,8 +27,9 @@ npm run dev
    other free versions) from the online catalog (getbible.net). This needs internet
    once; after that it works offline. Versions that need a license (RVR1960, NVI, NTV)
    are not in the catalog: import them from a file (Zefania XML, OSIS XML, JSON or text).
-5. **PowerPoint**: install LibreOffice, so .pptx files can be converted to pictures.
-   Without it, save presentations as PDF.
+5. **PowerPoint**: .pptx files are converted to pictures with Microsoft PowerPoint, if it
+   is installed. If not, install LibreOffice (libreoffice.org). Without either, save
+   presentations as PDF.
 6. **Text style**: in the Bible panel (or the preview of a song) click **Text style…**.
    Choose the font, size, color and background for Bible text and for songs/typed text.
    A song or Bible item can also have its own background picture or video.

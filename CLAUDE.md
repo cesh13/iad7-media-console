@@ -10,7 +10,7 @@ output to several screens (projector, participant monitor).
 ## Stack
 - Electron + TypeScript + React.
 - The main process holds the state. Output windows only render state from IPC.
-- `chokidar` for folder watching, `pdf.js` for PDF pages, LibreOffice headless
+- `chokidar` for folder watching, `pdf.js` for PDF pages, PowerPoint (Windows) or LibreOffice headless
   for .pptx → PDF.
 - JSON files for services and settings.
 

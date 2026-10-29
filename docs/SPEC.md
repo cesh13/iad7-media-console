@@ -46,8 +46,10 @@ Requirements:
   they receive over IPC.
 - Media: HTML `<video>`, `<img>`, `<audio>`.
 - PDF pages: `pdf.js` (or pre-render to PNG).
-- PowerPoint: convert .pptx to PDF with LibreOffice in headless mode
-  (`soffice --headless --convert-to pdf`), then show it as PDF pages. Do not try
+- PowerPoint: convert .pptx to PDF, then show it as PDF pages. On Windows use
+  Microsoft PowerPoint when it is installed (through PowerShell, without a
+  window). Otherwise use LibreOffice in headless mode
+  (`soffice --headless --convert-to pdf`). Do not try
   to render .pptx directly. Animations and embedded video in .pptx are not
   supported; the team plays those parts as separate video files.
 - Folder watching: `chokidar`.
@@ -244,7 +246,7 @@ See `docs/design/Preview-*.dc.html`.
    group.
 3. Groups (Main, Stage) with different content; idle screen.
 4. Preview panel with "Go live".
-5. PDF slides with `pdf.js`; .pptx → PDF conversion with LibreOffice.
+5. PDF slides with `pdf.js`; .pptx → PDF conversion with PowerPoint or LibreOffice.
 6. Bible: data import, search, picker.
 7. Folder items with search (hymnal); search index.
 8. Shared folder watching.
