@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { strings } from '../strings'
 import { useServiceState } from './hooks'
+import { ServiceBar } from './ServiceBar'
 import { ScreensPage } from './ScreensPage'
 import { ServicePage } from './ServicePage'
 
@@ -25,6 +26,7 @@ export function App() {
             {strings.tabScreens}
           </button>
         </nav>
+        {state && <ServiceBar state={state} />}
         {overlays && (
           <div className="topbar-actions">
             <button

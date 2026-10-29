@@ -71,6 +71,54 @@ export interface Settings {
   sharedFolder?: string
   audio?: AudioSettings
   messages?: SavedMessage[]
+  /** Library root folders (Himnario, Videos, Fondos, …). */
+  library?: LibraryFolder[]
+  favorites?: Favorite[]
+}
+
+// ---- Library (SPEC 5.2) and hotkeys (SPEC 5.6) ----
+
+export interface LibraryFolder {
+  path: string
+  name: string
+}
+
+/**
+ * A favorite: a file, or an action. Favorites with a hotkey (1 = F1 … 8 = F8)
+ * go live with one press.
+ */
+export interface Favorite {
+  id: string
+  kind: 'file' | 'logo' | 'black' | 'countdown'
+  title: string
+  path?: string
+  type?: ItemType
+  hotkey?: number
+  /** Countdown: seconds. */
+  seconds?: number
+}
+
+/** One file or folder in the library browser. */
+export interface LibEntry {
+  name: string
+  path: string
+  dir: boolean
+  type: ItemType | null
+  size: number
+  /** Last change time (ms). */
+  mtime: number
+  /** How often and when it went live. */
+  used?: { count: number; last: number }
+  /** Folders: number of files inside. */
+  files?: number
+}
+
+/** A saved service, for the selector and "past services". */
+export interface ServiceSummary {
+  id: string
+  name: string
+  date: string
+  items: number
 }
 
 // ---- Stage (SPEC 7) ----
@@ -362,6 +410,8 @@ export interface Service {
   items: ServiceItem[]
   /** Bible passages shown in this service ("Today" chips). */
   bibleHistory?: BibleRef[]
+  /** When the first item went live (ms), for the elapsed time in the top bar. */
+  startedAt?: number
 }
 
 // ---- Live state ----
@@ -450,6 +500,9 @@ export interface ServiceState {
   stageTimer: StageTimer
   stageMessage: string | null
   messages: SavedMessage[]
+  services: ServiceSummary[]
+  library: LibraryFolder[]
+  favorites: Favorite[]
   logoUrl?: string
 }
 
@@ -551,6 +604,29 @@ export interface MediaConsoleApi {
   setOverlay(name: keyof Overlays, on: boolean): Promise<void>
   /** Remove the text layer of the target, of one group, or of all groups ("Clear text"). */
   clearText(groupId?: string | 'all'): Promise<void>
+
+  // Services
+  newService(): Promise<void>
+  openService(serviceId: string): Promise<void>
+  renameService(name: string): Promise<void>
+  /** The items of another service (to look at before copying). */
+  serviceItems(serviceId: string): Promise<ServiceItem[]>
+  /** Copy the order of a past service to the end of this service. */
+  copyOrderFrom(serviceId: string): Promise<void>
+
+  // Library, favorites, hotkeys
+  pickLibraryFolder(): Promise<void>
+  removeLibraryFolder(path: string): Promise<void>
+  listLibrary(path: string): Promise<LibEntry[]>
+  /** Files whose name has all the words, in a folder and its subfolders. */
+  searchLibrary(path: string, query: string): Promise<LibEntry[]>
+  addFavorite(path: string): Promise<void>
+  addFavoriteAction(kind: 'logo' | 'black' | 'countdown'): Promise<void>
+  removeFavorite(id: string): Promise<void>
+  /** Give a favorite a hotkey (1–8 = F1–F8), or remove it (null). */
+  setHotkey(favoriteId: string, key: number | null): Promise<void>
+  /** One press: the favorite goes live now on the target. */
+  triggerHotkey(key: number): Promise<void>
 
   // Stage and messages
   stageTimerSet(label: string, seconds: number): Promise<void>

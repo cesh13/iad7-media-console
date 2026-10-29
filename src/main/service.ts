@@ -50,6 +50,14 @@ let audioHooks: {
   orderEnded: () => void
 } = { playItem: () => {}, stopItem: () => {}, stopMusic: () => {}, orderEnded: () => {} }
 
+/** Hotkey files: prepared items that are not in the order. */
+const extraItems: ServiceItem[] = []
+let onUsed: (path: string) => void = () => {}
+
+export function connectUsage(callback: (path: string) => void): void {
+  onUsed = callback
+}
+
 let getGroups: () => GroupConfig[] = () => []
 let logoUrl: () => string | undefined = () => undefined
 let notify: (outputsChanged: boolean) => void = () => {}
@@ -152,7 +160,7 @@ export function findItem(itemId: string): ServiceItem | undefined {
     if (i.id === itemId) return i
     if (i.child?.id === itemId) return i.child
   }
-  return undefined
+  return extraItems.find((i) => i.id === itemId)
 }
 
 /** Position in the order. The chosen file of a folder has the position of its folder. */
@@ -176,8 +184,8 @@ function setStatus(itemId: string, status: ItemStatus): void {
   }
 }
 
-/** The service state without the stage parts (index.ts adds them). */
-export function serviceState(): Omit<ServiceState, 'stageTimer' | 'stageMessage' | 'messages'> {
+/** The service state without the stage and library parts (index.ts adds them). */
+export function serviceState(): Omit<ServiceState, 'stageTimer' | 'stageMessage' | 'messages' | 'services' | 'library' | 'favorites'> {
   refreshFolders()
   const next = nextIndex()
   return {
@@ -203,8 +211,8 @@ const folderItemThreshold = 30
  * order; a big folder becomes one folder item, unless `asFiles` is set.
  */
 export async function addFiles(paths: string[], asFiles = false): Promise<AddFilesResult> {
-  const files: string[] = []
-  let folders = 0
+  // Files and folder items, in file-name order.
+  const units: { path: string; folder: boolean }[] = []
   for (const p of [...paths].sort(byFileName)) {
     const info = await stat(p).catch(() => null)
     if (!info) continue
@@ -212,19 +220,20 @@ export async function addFiles(paths: string[], asFiles = false): Promise<AddFil
       const entries = await readdir(p, { withFileTypes: true })
       const inside = entries.filter((e) => e.isFile()).map((e) => join(p, e.name)).sort(byFileName)
       // A big folder (the hymnal) is one item with search; a small folder adds its files.
-      if (!asFiles && inside.filter((f) => itemType(f)).length > folderItemThreshold) {
-        addFolder(p)
-        folders++
-      } else {
-        files.push(...inside)
-      }
+      if (!asFiles && inside.filter((f) => itemType(f)).length > folderItemThreshold) units.push({ path: p, folder: true })
+      else units.push(...inside.map((f) => ({ path: f, folder: false })))
     } else {
-      files.push(p)
+      units.push({ path: p, folder: false })
     }
   }
 
-  const result: AddFilesResult = { added: folders, skipped: [] }
-  for (const path of files) {
+  const result: AddFilesResult = { added: 0, skipped: [] }
+  for (const { path, folder } of units) {
+    if (folder) {
+      addFolder(path)
+      result.added++
+      continue
+    }
     const type = itemType(path)
     if (!type) {
       result.skipped.push(basename(path))
@@ -488,6 +497,8 @@ function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
   const found = findItem(itemId)
   const item = found && playable(found)
   if (!item || !isReady(item) || groupIds.length === 0) return
+  if (item.path) onUsed(item.path)
+  if (!service.startedAt) service.startedAt = Date.now()
   if (item.type === 'bible') return showText(groupIds, item.id, buildScreens(item.bible!, item.settings), item.settings, item.title, item.bible)
   if (item.type === 'song') return showText(groupIds, item.id, songScreens(item), item.settings, item.title)
   if (item.type === 'audio') return playAudioItem(item)
@@ -700,6 +711,102 @@ export function addCountdown(): void {
     settings: defaultSettings('countdown')
   })
   changed()
+}
+
+// ---- Services ----
+
+/** Stop everything that is live (when the service changes). Screens show their idle screen. */
+function clearAllLive(): void {
+  for (const id of [...live.keys()]) live.set(id, { content: null, text: null })
+  if (audioLayer) audioHooks.stopItem()
+  audioLayer = null
+  playback.clear()
+  for (const timer of autoNextTimers.values()) clearTimeout(timer)
+  autoNextTimers.clear()
+}
+
+/** Open another service (a new one, or a past one). */
+export function switchService(next: Service): void {
+  flushSave()
+  clearAllLive()
+  initService(next)
+  // Save at once, so the new service is in the list of services.
+  saveService(service)
+  changed()
+}
+
+export function currentServiceId(): string {
+  return service.id
+}
+
+export function renameService(name: string): void {
+  if (!name.trim()) return
+  service.name = name.trim()
+  changed()
+}
+
+/** Copy items of a past service to the end of this one: all "not done"; folders keep the folder, not the chosen file (SPEC 5.2). */
+export function copyOrder(from: Service): void {
+  for (const old of from.items) {
+    const item: ServiceItem = {
+      ...structuredClone(old),
+      id: randomUUID(),
+      status: 'pending',
+      child: undefined,
+      folderChoice: undefined,
+      cacheProgress: undefined
+    }
+    service.items.push(item)
+    if (item.type === 'folder') openFolderIndex(item.path)
+    else if (item.type !== 'bible' && item.type !== 'countdown') restoreItem(item)
+  }
+  changed()
+}
+
+// ---- Hotkeys ----
+
+/** A hotkey file: prepared now (copied, converted), so one press shows it at once. */
+export function prepareExtra(path: string): ServiceItem | null {
+  const known = extraItems.find((i) => i.path === path)
+  if (known) return known
+  const type = itemType(path)
+  if (!type || type === 'folder') return null
+  const item: ServiceItem = {
+    id: randomUUID(),
+    type,
+    title: basename(path, extname(path)),
+    path,
+    cache: 'copying',
+    status: 'pending',
+    settings: { ...defaultSettings(type), autoDone: false }
+  }
+  extraItems.push(item)
+  startCopy(item)
+  return item
+}
+
+/** Hotkey: a file goes live now on the target (it is not added to the order). */
+export function goLiveFile(path: string): void {
+  const item = prepareExtra(path)
+  if (item) goLive(item.id)
+}
+
+/** Hotkey: a countdown of N seconds goes live now on the target. */
+export function goLiveCountdown(seconds: number, title: string): void {
+  let item = extraItems.find((i) => i.type === 'countdown' && i.settings.countdownSeconds === seconds)
+  if (!item) {
+    item = {
+      id: randomUUID(),
+      type: 'countdown',
+      title,
+      path: '',
+      cache: 'ready',
+      status: 'pending',
+      settings: { ...defaultSettings('countdown'), countdownSeconds: seconds, atZero: 'stay', autoDone: false }
+    }
+    extraItems.push(item)
+  }
+  goLive(item.id)
 }
 
 // ---- Stage screen ----

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
 import { AudioTab } from './AudioTab'
+import { HotkeysBar } from './ServiceBar'
 import { MessageTab, StageTab } from './StageTab'
 
 type Tab = 'audio' | 'message' | 'stage'
@@ -16,6 +17,7 @@ export function QuickPanel({ state }: { state: ServiceState }) {
   ]
   return (
     <section className="quick panel-col">
+      <HotkeysBar state={state} />
       <nav className="tabs quick-tabs">
         {tabs.map(([id, label]) => (
           <button key={id} className={tab === id ? 'tab is-active' : 'tab'} onClick={() => setTab(id)}>

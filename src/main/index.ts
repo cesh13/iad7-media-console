@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type {
   BibleRef,
@@ -8,6 +8,7 @@ import type {
   Overlays,
   PlaybackInfo,
   ScreensState,
+  Service,
   ServiceState,
   Settings,
   Target
@@ -29,6 +30,8 @@ import { onFolderIndexChanged, searchFolder } from './folderIndex'
 import { closePdfWindow } from './pdfPages'
 import * as shared from './sharedFolder'
 import * as stage from './stage'
+import * as library from './library'
+import { listServices } from './serviceStore'
 import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
@@ -74,7 +77,10 @@ function serviceStateFull(): ServiceState {
     groups: state.groups.map((g) => (g.config.stageView ? { ...g, stage: stage.stageRender(g.config, settings.groups) } : g)),
     stageTimer: stage.stageTimer(),
     stageMessage: stage.stageMessage(),
-    messages: stage.savedMessages()
+    messages: stage.savedMessages(),
+    services: listServices(),
+    library: library.libraryFolders(),
+    favorites: library.favorites()
   }
 }
 
@@ -112,7 +118,11 @@ function createControlWindow(): void {
     show: false,
     webPreferences: { preload: preloadPath(), sandbox: true }
   })
-  controlWindow.once('ready-to-show', () => controlWindow?.show())
+  // The control monitor is only for this app: use all of it.
+  controlWindow.once('ready-to-show', () => {
+    controlWindow?.maximize()
+    controlWindow?.show()
+  })
   // Closing the control window ends the app, and with it all screen windows.
   controlWindow.on('closed', () => {
     controlWindow = null
@@ -200,6 +210,46 @@ function registerIpc(): void {
   // ---- Service order ----
   ipcMain.handle('service:get', () => serviceStateFull())
   ipcMain.handle('service:addCountdown', () => svc.addCountdown())
+
+  // ---- Services ----
+  ipcMain.handle('services:new', () => {
+    const s = createService()
+    // Two new services on the same day get different names.
+    const same = listServices().filter((x) => x.name.startsWith(s.name)).length
+    if (same) s.name = `${s.name} (${same + 1})`
+    openService(s)
+  })
+  ipcMain.handle('services:open', (_e, id: string) => {
+    const s = loadService(id)
+    if (s && id !== svc.currentServiceId()) openService(s)
+  })
+  ipcMain.handle('services:rename', (_e, name: string) => svc.renameService(name))
+  ipcMain.handle('services:items', (_e, id: string) => loadService(id)?.items ?? [])
+  ipcMain.handle('services:copy', (_e, id: string) => {
+    const s = loadService(id)
+    if (s) svc.copyOrder(s)
+  })
+
+  // ---- Library, favorites, hotkeys ----
+  ipcMain.handle('library:pick', async () => {
+    if (!controlWindow) return
+    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'] })
+    if (!result.canceled && result.filePaths[0]) library.addLibraryFolder(result.filePaths[0])
+  })
+  ipcMain.handle('library:remove', (_e, path: string) => library.removeLibraryFolder(path))
+  ipcMain.handle('library:list', (_e, path: string) => library.listLibrary(path))
+  ipcMain.handle('library:search', (_e, path: string, query: string) => library.searchLibrary(path, query))
+  ipcMain.handle('favorites:add', (_e, path: string) => {
+    library.addFavorite(path)
+    prepareHotkeyFiles()
+  })
+  ipcMain.handle('favorites:addAction', (_e, kind: 'logo' | 'black' | 'countdown') => library.addFavoriteAction(kind))
+  ipcMain.handle('favorites:remove', (_e, id: string) => library.removeFavorite(id))
+  ipcMain.handle('favorites:hotkey', (_e, id: string, key: number | null) => {
+    library.setHotkey(id, key)
+    prepareHotkeyFiles()
+  })
+  ipcMain.handle('hotkey:trigger', (_e, key: number) => triggerHotkey(key))
 
   // ---- Stage and messages ----
   ipcMain.handle('stage:timerSet', (_e, label: string, seconds: number) => stage.timerSet(label, seconds))
@@ -352,6 +402,28 @@ function watchScreens(): void {
   screen.on('display-metrics-changed', changed)
 }
 
+function openService(s: Service): void {
+  settings.currentServiceId = s.id
+  saveSettings(settings)
+  svc.switchService(s)
+}
+
+/** Hotkey files are copied and converted before they are needed. */
+function prepareHotkeyFiles(): void {
+  for (const f of library.favorites()) if (f.kind === 'file' && f.path && f.hotkey) svc.prepareExtra(f.path)
+}
+
+/** One press = live now (SPEC 5.6). Logo and black are switched on and off. */
+function triggerHotkey(key: number): void {
+  const f = library.favoriteForKey(key)
+  if (!f) return
+  const overlays = svc.getOverlays()
+  if (f.kind === 'logo') svc.setOverlay('logo', !overlays.logo)
+  else if (f.kind === 'black') svc.setOverlay('black', !overlays.black)
+  else if (f.kind === 'countdown') svc.goLiveCountdown(f.seconds ?? 300, f.title)
+  else if (f.path) svc.goLiveFile(f.path)
+}
+
 function openCurrentService(): void {
   let service = settings.currentServiceId ? loadService(settings.currentServiceId) : null
   if (!service) {
@@ -381,26 +453,34 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
+    // No menu: its shortcuts (for example Ctrl+R = reload) must not act during a service.
+    // macOS keeps its menu, which has copy and paste.
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
     handleMediaScheme()
+    allowAudioDevices()
     settings = loadSettings()
-    openCurrentService()
+    // Connect all modules first: opening the service starts copies, and their
+    // progress already updates the screens (which read audio and stage state).
     groups.connectGroups(settings, setupChanged)
-    stage.connectStage(settings, () => {
-      sendServiceState()
-      renderOutputs()
-    })
     audio.connectAudio(settings, {
       videoPlaying: svc.videoPlaying,
       onChange: () => controlWindow?.webContents.send('audio:changed', audio.audioState()),
       onItemEnded: svc.audioItemEnded
     })
+    stage.connectStage(settings, () => {
+      sendServiceState()
+      renderOutputs()
+    })
+    library.connectLibrary(settings, sendServiceState)
+    svc.connectUsage(library.markUsed)
     svc.connectAudioHooks({
       playItem: audio.playItem,
       stopItem: audio.stopItem,
       stopMusic: audio.fadeOut,
       orderEnded: audio.orderEnded
     })
-    allowAudioDevices()
+    openCurrentService()
+    prepareHotkeyFiles()
     registerIpc()
     onTestWindowsChanged(sendScreensState)
     watchScreens()

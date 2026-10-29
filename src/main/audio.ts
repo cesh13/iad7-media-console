@@ -43,7 +43,7 @@ export function defaultAudioSettings(): AudioSettings {
 }
 
 export function audioSettings(): AudioSettings {
-  return settings.audio ?? defaultAudioSettings()
+  return settings?.audio ?? defaultAudioSettings()
 }
 
 export function connectAudio(

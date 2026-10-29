@@ -3,6 +3,7 @@ import type { ContentLayer, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { useScreensState, useServiceState } from './hooks'
 import { BiblePanel } from './BiblePanel'
+import { LibraryMain, LibrarySide, pathDragType, type LibSelection } from './LibraryView'
 import { OrderPanel, TypeIcon } from './OrderPanel'
 import { PreviewPanel } from './PreviewPanel'
 import { QuickPanel } from './QuickPanel'
@@ -15,6 +16,9 @@ export function ServicePage() {
   const state = useServiceState()
   const [screens] = useScreensState()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [leftTab, setLeftTab] = useState<'order' | 'library'>('order')
+  const [library, setLibrary] = useState<LibSelection>({ kind: 'favorites' })
+  const [dropOnOrder, setDropOnOrder] = useState(false)
 
   const items = state?.service.items ?? []
   const selected = items.find((i) => i.id === selectedId) ?? null
@@ -26,6 +30,13 @@ export function ServicePage() {
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
       // The Bible verse list uses ↑ ↓ itself (verse by verse).
       if (target.closest('[data-own-keys]') && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return
+      // F1–F8: hotkeys, one press = live now.
+      const fKey = /^F([1-8])$/.exec(e.key)
+      if (fKey) {
+        e.preventDefault()
+        void api.triggerHotkey(Number(fKey[1]))
+        return
+      }
       if (e.key === ' ') {
         e.preventDefault()
         void api.next()
@@ -51,12 +62,54 @@ export function ServicePage() {
 
   if (!state) return null
 
+  /** "Open in preview": add the file to the order and show it in the preview. */
+  const openInPreview = async (path: string) => {
+    await api.addFiles([path])
+    const s = await api.getService()
+    const added = [...s.service.items].reverse().find((i) => i.path === path)
+    if (added) setSelectedId(added.id)
+    setLeftTab('order')
+  }
+
   return (
     <div className="service">
       <div className="service-top">
-        <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
+        <div className="left-col">
+          <nav className="tabs left-tabs">
+            <button
+              className={['tab', leftTab === 'order' ? 'is-active' : '', dropOnOrder ? 'is-drop' : ''].join(' ')}
+              onClick={() => setLeftTab('order')}
+              // Drop a file from the library on the Order tab to add it.
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes(pathDragType)) return
+                e.preventDefault()
+                setDropOnOrder(true)
+              }}
+              onDragLeave={() => setDropOnOrder(false)}
+              onDrop={(e) => {
+                setDropOnOrder(false)
+                const path = e.dataTransfer.getData(pathDragType)
+                if (path) void api.addFiles([path])
+              }}
+            >
+              {strings.orderLabel}
+            </button>
+            <button className={leftTab === 'library' ? 'tab is-active' : 'tab'} onClick={() => setLeftTab('library')}>
+              {strings.libraryLabel}
+            </button>
+          </nav>
+          {leftTab === 'order' ? (
+            <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />
+          ) : (
+            <LibrarySide state={state} selection={library} onSelect={setLibrary} />
+          )}
+        </div>
         <div className="service-center">
-          <PreviewPanel state={state} item={selected} />
+          {leftTab === 'library' ? (
+            <LibraryMain state={state} selection={library} onOpenInPreview={(p) => void openInPreview(p)} />
+          ) : (
+            <PreviewPanel state={state} item={selected} />
+          )}
           <LivePanel state={state} />
         </div>
         <ScreensColumn state={state} screens={screens} />

@@ -50,6 +50,60 @@ export const strings = {
   indexing: (fraction: number) => `indexing ${Math.round(fraction * 100)}%`,
   addFolder: 'Add folder',
 
+  // Top bar: services
+  serviceLabel: 'Service',
+  renameHint: 'Double-click to rename',
+  renameService: 'Rename this service',
+  newService: 'New',
+  elapsedHint: 'Time since the first item went live',
+
+  // Hotkeys
+  hotkeysLabel: 'Hotkeys',
+  emptyHotkey: '[empty]',
+
+  // Library (SPEC 5.2)
+  libraryLabel: 'Library',
+  libraryFolders: 'Library folders',
+  favorites: 'Favorites',
+  removeLibraryFolder: 'Remove from the library (the files stay)',
+  addLibraryFolder: 'Add library folder',
+  pastServices: 'Past services',
+  noPastServices: 'No past services yet.',
+  itemCount: (n: number) => (n === 1 ? '1 item' : `${n} items`),
+  libraryHelp: 'Choose a library folder, ★ Favorites, or a past service.',
+  searchLibrary: 'Search library',
+  libFilters: { All: 'All', Video: 'Video', Slides: 'Slides', Songs: 'Songs', Images: 'Images', Audio: 'Audio' } as Record<string, string>,
+  sortLabel: 'Sort',
+  sortName: 'Name',
+  sortUsed: 'Last used',
+  sortAdded: 'Date added',
+  addAllToOrder: 'Add all to order',
+  libEmpty: 'No files here.',
+  dirHint: (n: number) => `${n} files · double-click to open`,
+  usedText: (u?: { count: number; last: number }) => {
+    if (!u) return 'Never used'
+    if (u.count > 2) return `Used ${u.count} times`
+    return `Used ${new Date(u.last).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`
+  },
+  libTip: 'Double-click or Enter adds a file to the order. You can also drag a file to the Order tab.',
+  libSelectHint: 'Select a file to see its details.',
+  typeLabel: 'Type',
+  sizeLabel: 'Size',
+  addedLabel: 'Added',
+  lastUsedLabel: 'Last used',
+  openInPreview: 'Open in preview',
+  addToFavorites: 'Add to Favorites',
+  inFavorites: 'In Favorites',
+  favoritesHelp: 'One press of a hotkey = live now on the target.',
+  addAction: 'Add',
+  blackShort: 'Black screen',
+  countdown5: 'Countdown 5 min',
+  noHotkey: 'No hotkey',
+  reuseHelp: (name: string) => `Reuse "${name}": copy its order to this service, then change only what is new. Folder items keep the folder; choose the file again.`,
+  folderKept: 'folder: choose the file again',
+  copyOrder: 'Copy order to this service',
+  openThisService: 'Open this service',
+
   // Shared folder
   sharedLabel: 'Shared folder',
   sharedHelp:

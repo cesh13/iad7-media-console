@@ -1,8 +1,8 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Service } from '../shared/types'
+import type { Service, ServiceSummary } from '../shared/types'
 
 function servicesDir(): string {
   const dir = join(app.getPath('userData'), 'services')
@@ -14,10 +14,23 @@ function serviceFile(id: string): string {
   return join(servicesDir(), `${id}.json`)
 }
 
+/** A new service, named like "Culto · sáb 31 oct" (the date in Spanish). */
 export function createService(): Service {
   const now = new Date()
-  const date = now.toISOString().slice(0, 10)
-  return { id: randomUUID(), name: `Service · ${date}`, date, items: [] }
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const label = now.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')
+  return { id: randomUUID(), name: `Culto · ${label}`, date, items: [] }
+}
+
+/** All saved services, newest first. */
+export function listServices(): ServiceSummary[] {
+  const list: ServiceSummary[] = []
+  for (const name of readdirSync(servicesDir())) {
+    if (!name.endsWith('.json')) continue
+    const s = loadService(name.slice(0, -5))
+    if (s) list.push({ id: s.id, name: s.name, date: s.date, items: s.items.length })
+  }
+  return list.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name))
 }
 
 export function loadService(id: string): Service | null {

@@ -52,6 +52,24 @@ const api: MediaConsoleApi = {
   setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
   updateItem: (id, change) => invoke('service:updateItem', id, change),
 
+  // Services
+  newService: () => invoke('services:new'),
+  openService: (id) => invoke('services:open', id),
+  renameService: (name) => invoke('services:rename', name),
+  serviceItems: (id) => invoke('services:items', id),
+  copyOrderFrom: (id) => invoke('services:copy', id),
+
+  // Library, favorites, hotkeys
+  pickLibraryFolder: () => invoke('library:pick'),
+  removeLibraryFolder: (path) => invoke('library:remove', path),
+  listLibrary: (path) => invoke('library:list', path),
+  searchLibrary: (path, query) => invoke('library:search', path, query),
+  addFavorite: (path) => invoke('favorites:add', path),
+  addFavoriteAction: (kind) => invoke('favorites:addAction', kind),
+  removeFavorite: (id) => invoke('favorites:remove', id),
+  setHotkey: (id, key) => invoke('favorites:hotkey', id, key),
+  triggerHotkey: (key) => invoke('hotkey:trigger', key),
+
   // Stage and messages
   stageTimerSet: (label, seconds) => invoke('stage:timerSet', label, seconds),
   stageTimerStart: () => invoke('stage:timerStart'),
