@@ -21,8 +21,39 @@ export interface Output {
   name: string
 }
 
+/** A file used by the app itself (logo, idle background), with its cached copy. */
+export interface MediaRef {
+  path: string
+  type: 'image' | 'video'
+  cachedPath?: string
+  /** media:// URL of the cached copy, when it is ready. */
+  url?: string
+}
+
+/**
+ * What a group shows when nothing is live (SPEC section 8).
+ * - black: black screen
+ * - logo: the church logo (Settings.logo)
+ * - background: the group's first idle file (image, or video in a loop)
+ * - loop: all idle files one after the other (announcements)
+ */
+export type IdleKind = 'black' | 'logo' | 'background' | 'loop'
+
+/** A group of screens that show the same content (SPEC section 4). */
+export interface GroupConfig {
+  id: string
+  name: string
+  outputIds: string[]
+  idle: IdleKind
+  idleMedia: MediaRef[]
+  /** Seconds each image shows in an idle loop. */
+  idleInterval: number
+}
+
 export interface Settings {
   outputs: Output[]
+  groups: GroupConfig[]
+  logo?: MediaRef
   currentServiceId?: string
 }
 
@@ -32,11 +63,13 @@ export interface OutputStatus {
   screen: ScreenInfo | null
 }
 
-/** Everything the control window shows about screens. */
+/** Everything the screens page shows. */
 export interface ScreensState {
   screens: ScreenInfo[]
   outputs: OutputStatus[]
   testOpen: number[]
+  groups: GroupConfig[]
+  logo?: MediaRef
 }
 
 /** Data the main process sends to a test window. */
@@ -48,7 +81,7 @@ export interface TestInfo {
 
 // ---- Service order (SPEC section 4) ----
 
-/** Step 2 supports only video and image. Other types come in later steps. */
+/** Item types supported so far. More types come in later steps. */
 export type ItemType = 'video' | 'image'
 
 export type ItemStatus = 'pending' | 'live' | 'done'
@@ -84,10 +117,15 @@ export interface Service {
 
 // ---- Live state ----
 
-/** What a group shows now. */
-export interface LiveState {
+/** The item on the content layer of a group. */
+export interface ContentLayer {
   itemId: string
-  /** Changes every time the item goes live, so outputs restart the media. */
+  type: ItemType
+  url: string
+  /**
+   * Changes every time something goes live. Groups that got the same item in
+   * one "Go live" share the take, so their video is the same playback.
+   */
   take: number
   playing: boolean
   /** Ask outputs to jump to this time (seconds). Changes with seekId. */
@@ -95,30 +133,44 @@ export interface LiveState {
   seekId?: number
 }
 
-/** Step 2 has one group, "Main", with all named outputs. */
-export interface Group {
-  id: string
-  name: string
-  outputIds: string[]
-  live: LiveState | null
+/** What a group shows now, by layer (SPEC section 4). More layers come later. */
+export interface GroupLive {
+  content: ContentLayer | null
 }
 
-/** Playback position, reported by the first output of a group. */
+/** Where "Go live" sends an item: one group, or all groups. */
+export type Target = 'all' | string
+
+/** Playback position, reported by the output that plays the sound. */
 export interface PlaybackInfo {
-  itemId: string
   take: number
   currentTime: number
   duration: number
   playing: boolean
 }
 
+/** Overlays over all screens, from the top bar buttons. */
+export interface Overlays {
+  black: boolean
+  logo: boolean
+}
+
+export interface GroupView {
+  config: GroupConfig
+  live: GroupLive
+}
+
 /** Everything the control window shows about the service. */
 export interface ServiceState {
   service: Service
-  group: Group
-  playback: PlaybackInfo | null
+  groups: GroupView[]
+  target: Target
+  /** By take. */
+  playback: Record<number, PlaybackInfo>
   /** The item that "Next" makes live (blue NEXT mark). */
   nextItemId: string | null
+  overlays: Overlays
+  logoReady: boolean
 }
 
 export interface AddFilesResult {
@@ -130,20 +182,17 @@ export interface AddFilesResult {
 /** What one output window must render. */
 export interface OutputRender {
   outputName: string
-  /** Only one output per group plays sound, so the audio is not doubled. */
-  audio: boolean
-  live: null | {
-    take: number
-    type: ItemType
-    url: string
-    playing: boolean
-    seekTo?: number
-    seekId?: number
-  }
+  groupName: string | null
+  /** Only one output plays the sound of each take, so the audio is not doubled. */
+  audioTakes: number[]
+  content: ContentLayer | null
+  idle: { kind: IdleKind; media: { type: 'image' | 'video'; url: string }[]; interval: number }
+  logoUrl?: string
+  overlays: Overlays
 }
 
 export interface MediaConsoleApi {
-  // Screens (step 1)
+  // Screens and groups
   getScreens(): Promise<ScreensState>
   onScreensChanged(callback: (state: ScreensState) => void): () => void
   saveOutput(displayKey: string, name: string): Promise<ScreensState>
@@ -151,8 +200,17 @@ export interface MediaConsoleApi {
   openTest(electronIds: number[]): Promise<ScreensState>
   closeTests(): Promise<ScreensState>
   onTestInfo(callback: (info: TestInfo) => void): () => void
+  addGroup(name: string): Promise<void>
+  removeGroup(groupId: string): Promise<void>
+  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval'>>): Promise<void>
+  /** Put an output in a group (null: no group). An output is in one group at most. */
+  assignOutput(outputId: string, groupId: string | null): Promise<void>
+  /** Show a file dialog and set the group's idle files. */
+  pickIdleMedia(groupId: string): Promise<void>
+  clearIdleMedia(groupId: string): Promise<void>
+  pickLogo(): Promise<void>
 
-  // Service order (step 2)
+  // Service order
   getService(): Promise<ServiceState>
   onServiceChanged(callback: (state: ServiceState) => void): () => void
   /** Show a file dialog and add the chosen files. */
@@ -167,14 +225,20 @@ export interface MediaConsoleApi {
   setDuration(itemId: string, seconds: number): Promise<void>
   moveItem(itemId: string, toIndex: number): Promise<void>
   setItemStatus(itemId: string, status: ItemStatus): Promise<void>
+
+  // Live
+  setTarget(target: Target): Promise<void>
+  /** Send an item to the current target. */
   goLive(itemId: string): Promise<void>
   next(): Promise<void>
   previous(): Promise<void>
-  clear(): Promise<void>
-  setPlaying(playing: boolean): Promise<void>
-  seek(seconds: number): Promise<void>
+  /** Clear the content of the current target, or of one group. */
+  clear(groupId?: string): Promise<void>
+  setPlaying(take: number, playing: boolean): Promise<void>
+  seek(take: number, seconds: number): Promise<void>
+  setOverlay(name: keyof Overlays, on: boolean): Promise<void>
 
   // Output windows
   onOutputRender(callback: (render: OutputRender) => void): () => void
-  reportPlayback(info: Omit<PlaybackInfo, 'itemId'> & { ended: boolean }): void
+  reportPlayback(info: PlaybackInfo & { ended: boolean }): void
 }

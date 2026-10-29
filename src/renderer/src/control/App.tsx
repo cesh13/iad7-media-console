@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { strings } from '../strings'
+import { useServiceState } from './hooks'
 import { ScreensPage } from './ScreensPage'
 import { ServicePage } from './ServicePage'
+
+const api = window.mediaConsole
 
 type Tab = 'service' | 'screens'
 
 export function App() {
   const [tab, setTab] = useState<Tab>('service')
+  const state = useServiceState()
+  const overlays = state?.overlays
 
   return (
     <div className="app">
@@ -20,6 +25,24 @@ export function App() {
             {strings.tabScreens}
           </button>
         </nav>
+        {overlays && (
+          <div className="topbar-actions">
+            <button
+              className={overlays.logo ? 'btn btn-on' : 'btn'}
+              disabled={!state.logoReady}
+              title={state.logoReady ? undefined : strings.noLogoHint}
+              onClick={() => void api.setOverlay('logo', !overlays.logo)}
+            >
+              {strings.logo}
+            </button>
+            <button
+              className={overlays.black ? 'btn btn-black is-on' : 'btn btn-black'}
+              onClick={() => void api.setOverlay('black', !overlays.black)}
+            >
+              {overlays.black ? strings.blackOn : strings.blackAll}
+            </button>
+          </div>
+        )}
       </header>
       {tab === 'service' ? <ServicePage /> : <ScreensPage />}
     </div>

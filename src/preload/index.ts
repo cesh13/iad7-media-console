@@ -7,33 +7,46 @@ function listen<T>(channel: string, callback: (value: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 
+const invoke = ipcRenderer.invoke.bind(ipcRenderer)
+
 const api: MediaConsoleApi = {
-  // Screens
-  getScreens: () => ipcRenderer.invoke('screens:get'),
+  // Screens and groups
+  getScreens: () => invoke('screens:get'),
   onScreensChanged: (cb) => listen<ScreensState>('screens:changed', cb),
-  saveOutput: (displayKey, name) => ipcRenderer.invoke('outputs:save', displayKey, name),
-  removeOutput: (outputId) => ipcRenderer.invoke('outputs:remove', outputId),
-  openTest: (electronIds) => ipcRenderer.invoke('test:open', electronIds),
-  closeTests: () => ipcRenderer.invoke('test:close'),
+  saveOutput: (displayKey, name) => invoke('outputs:save', displayKey, name),
+  removeOutput: (outputId) => invoke('outputs:remove', outputId),
+  openTest: (electronIds) => invoke('test:open', electronIds),
+  closeTests: () => invoke('test:close'),
   onTestInfo: (cb) => listen<TestInfo>('test:info', cb),
+  addGroup: (name) => invoke('groups:add', name),
+  removeGroup: (id) => invoke('groups:remove', id),
+  updateGroup: (id, change) => invoke('groups:update', id, change),
+  assignOutput: (outputId, groupId) => invoke('groups:assign', outputId, groupId),
+  pickIdleMedia: (id) => invoke('groups:pickIdle', id),
+  clearIdleMedia: (id) => invoke('groups:clearIdle', id),
+  pickLogo: () => invoke('groups:pickLogo'),
 
   // Service order
-  getService: () => ipcRenderer.invoke('service:get'),
+  getService: () => invoke('service:get'),
   onServiceChanged: (cb) => listen<ServiceState>('service:changed', cb),
-  pickFiles: () => ipcRenderer.invoke('service:pickFiles'),
-  addFiles: (paths) => ipcRenderer.invoke('service:addFiles', paths),
+  pickFiles: () => invoke('service:pickFiles'),
+  addFiles: (paths) => invoke('service:addFiles', paths),
   pathForFile: (file) => webUtils.getPathForFile(file),
-  removeItem: (id) => ipcRenderer.invoke('service:removeItem', id),
-  retryCopy: (id) => ipcRenderer.invoke('service:retryCopy', id),
-  setDuration: (id, seconds) => ipcRenderer.invoke('service:setDuration', id, seconds),
-  moveItem: (id, toIndex) => ipcRenderer.invoke('service:moveItem', id, toIndex),
-  setItemStatus: (id, status) => ipcRenderer.invoke('service:setItemStatus', id, status),
-  goLive: (id) => ipcRenderer.invoke('live:go', id),
-  next: () => ipcRenderer.invoke('live:next'),
-  previous: () => ipcRenderer.invoke('live:previous'),
-  clear: () => ipcRenderer.invoke('live:clear'),
-  setPlaying: (playing) => ipcRenderer.invoke('live:setPlaying', playing),
-  seek: (seconds) => ipcRenderer.invoke('live:seek', seconds),
+  removeItem: (id) => invoke('service:removeItem', id),
+  retryCopy: (id) => invoke('service:retryCopy', id),
+  setDuration: (id, seconds) => invoke('service:setDuration', id, seconds),
+  moveItem: (id, toIndex) => invoke('service:moveItem', id, toIndex),
+  setItemStatus: (id, status) => invoke('service:setItemStatus', id, status),
+
+  // Live
+  setTarget: (target) => invoke('live:target', target),
+  goLive: (id) => invoke('live:go', id),
+  next: () => invoke('live:next'),
+  previous: () => invoke('live:previous'),
+  clear: (groupId) => invoke('live:clear', groupId),
+  setPlaying: (take, playing) => invoke('live:setPlaying', take, playing),
+  seek: (take, seconds) => invoke('live:seek', take, seconds),
+  setOverlay: (name, on) => invoke('live:overlay', name, on),
 
   // Output windows
   onOutputRender: (cb) => listen<OutputRender>('output:render', cb),

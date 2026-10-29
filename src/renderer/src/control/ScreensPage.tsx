@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { OutputStatus, ScreenInfo, ScreensState } from '../../../shared/types'
 import { strings } from '../strings'
+import { GroupsEditor } from './GroupsEditor'
+import { useScreensState } from './hooks'
 
 const api = window.mediaConsole
 
-/** Screen setup (build step 1): name the output screens and test them. */
+/** Screen setup: name the output screens, test them, and edit groups. */
 export function ScreensPage() {
-  const [state, setState] = useState<ScreensState | null>(null)
-
-  useEffect(() => {
-    void api.getScreens().then(setState)
-    return api.onScreensChanged(setState)
-  }, [])
+  const [state, setState] = useScreensState()
 
   if (!state) return null
 
@@ -73,6 +70,8 @@ export function ScreensPage() {
           ))}
         </div>
       </section>
+
+      <GroupsEditor state={state} />
     </main>
   )
 }

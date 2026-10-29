@@ -1,7 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { randomUUID } from 'node:crypto'
-import type { ItemStatus, OutputRender, PlaybackInfo, ScreensState, Settings } from '../shared/types'
+import type { GroupConfig, ItemStatus, Overlays, PlaybackInfo, ScreensState, Settings, Target } from '../shared/types'
 import { listScreens, matchOutputs } from './displays'
+import * as groups from './groups'
 import {
   allowOutputWindowsToClose,
   onOutputWindowLost,
@@ -11,6 +12,7 @@ import {
 } from './outputWindows'
 import { loadPage, preloadPath } from './pages'
 import { handleMediaScheme, registerMediaScheme } from './protocol'
+import { outputRenders } from './render'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
 import { loadSettings, saveSettings } from './settings'
@@ -26,11 +28,20 @@ import {
 let settings: Settings
 let controlWindow: BrowserWindow | null = null
 
+const mediaExtensions = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+
 registerMediaScheme()
 
 function screensState(): ScreensState {
   const screens = listScreens()
-  return { screens, outputs: matchOutputs(settings.outputs, screens), testOpen: openTestIds() }
+  return {
+    screens,
+    outputs: matchOutputs(settings.outputs, screens),
+    testOpen: openTestIds(),
+    groups: settings.groups,
+    logo: settings.logo
+  }
 }
 
 function sendScreensState(): void {
@@ -41,46 +52,30 @@ function sendServiceState(): void {
   controlWindow?.webContents.send('service:changed', svc.serviceState())
 }
 
-/** What one output shows now. */
-function outputRender(outputId: string, audioOutputId: string | undefined): OutputRender {
-  const output = settings.outputs.find((o) => o.id === outputId)
-  const group = svc.getGroup()
-  const item = group.live ? svc.findItem(group.live.itemId) : undefined
-  return {
-    outputName: output?.name ?? '',
-    audio: outputId === audioOutputId,
-    live:
-      group.live && item?.url
-        ? {
-            take: group.live.take,
-            type: item.type,
-            url: item.url,
-            playing: group.live.playing,
-            seekTo: group.live.seekTo,
-            seekId: group.live.seekId
-          }
-        : null
-  }
-}
-
 function renderOutputs(): void {
   const ids = openOutputIds(matchOutputs(settings.outputs, listScreens()))
-  for (const id of ids) sendRender(id, outputRender(id, ids[0]))
+  for (const [id, render] of outputRenders(settings, ids)) sendRender(id, render)
 }
 
 /** Open, move or close output windows to match the saved outputs and the connected screens. */
 function syncOutputs(): void {
-  svc.setGroupOutputs(settings.outputs.map((o) => o.id))
   syncOutputWindows(matchOutputs(settings.outputs, listScreens()), () => renderOutputs())
   renderOutputs()
 }
 
+/** After outputs, groups, idle files or the logo change. */
+function setupChanged(): void {
+  syncOutputs()
+  svc.groupsChanged()
+  sendScreensState()
+}
+
 function createControlWindow(): void {
   controlWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1400,
+    height: 860,
+    minWidth: 1000,
+    minHeight: 640,
     backgroundColor: '#101215',
     title: 'Media Console',
     autoHideMenuBar: true,
@@ -94,6 +89,18 @@ function createControlWindow(): void {
     app.quit()
   })
   loadPage(controlWindow, 'index')
+}
+
+async function pickPaths(options: { multi: boolean; extensions: string[]; name: string }): Promise<string[]> {
+  if (!controlWindow) return []
+  const result = await dialog.showOpenDialog(controlWindow, {
+    properties: options.multi ? ['openFile', 'multiSelections'] : ['openFile'],
+    filters: [
+      { name: options.name, extensions: options.extensions },
+      { name: 'All files', extensions: ['*'] }
+    ]
+  })
+  return result.canceled ? [] : result.filePaths
 }
 
 function registerIpc(): void {
@@ -111,19 +118,20 @@ function registerIpc(): void {
       match.output.name = trimmed
       match.output.displayKey = displayKey
     } else {
-      settings.outputs.push({ id: randomUUID(), displayKey, name: trimmed })
+      const output = { id: randomUUID(), displayKey, name: trimmed }
+      settings.outputs.push(output)
+      groups.placeNewOutput(output.id)
     }
     saveSettings(settings)
-    syncOutputs()
-    sendScreensState()
+    setupChanged()
     return screensState()
   })
 
   ipcMain.handle('outputs:remove', (_e, outputId: string) => {
     settings.outputs = settings.outputs.filter((o) => o.id !== outputId)
+    groups.forgetOutput(outputId)
     saveSettings(settings)
-    syncOutputs()
-    sendScreensState()
+    setupChanged()
     return screensState()
   })
 
@@ -142,19 +150,28 @@ function registerIpc(): void {
     return screensState()
   })
 
+  // ---- Groups ----
+  ipcMain.handle('groups:add', (_e, name: string) => groups.addGroup(name))
+  ipcMain.handle('groups:remove', (_e, id: string) => groups.removeGroup(id))
+  ipcMain.handle('groups:update', (_e, id: string, change: Partial<GroupConfig>) => groups.updateGroup(id, change))
+  ipcMain.handle('groups:assign', (_e, outputId: string, groupId: string | null) =>
+    groups.assignOutput(outputId, groupId)
+  )
+  ipcMain.handle('groups:pickIdle', async (_e, id: string) => {
+    const paths = await pickPaths({ multi: true, extensions: mediaExtensions, name: 'Video and images' })
+    if (paths.length) groups.setIdleMedia(id, paths)
+  })
+  ipcMain.handle('groups:clearIdle', (_e, id: string) => groups.setIdleMedia(id, []))
+  ipcMain.handle('groups:pickLogo', async () => {
+    const [path] = await pickPaths({ multi: false, extensions: imageExtensions, name: 'Images' })
+    if (path) groups.setLogo(path)
+  })
+
   // ---- Service order ----
   ipcMain.handle('service:get', () => svc.serviceState())
-
   ipcMain.handle('service:pickFiles', async () => {
-    if (!controlWindow) return { added: 0, skipped: [] }
-    const result = await dialog.showOpenDialog(controlWindow, {
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Video and images', extensions: ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'] },
-        { name: 'All files', extensions: ['*'] }
-      ]
-    })
-    return result.canceled ? { added: 0, skipped: [] } : svc.addFiles(result.filePaths)
+    const paths = await pickPaths({ multi: true, extensions: mediaExtensions, name: 'Video and images' })
+    return paths.length ? svc.addFiles(paths) : { added: 0, skipped: [] }
   })
   ipcMain.handle('service:addFiles', (_e, paths: string[]) => svc.addFiles(paths))
   ipcMain.handle('service:removeItem', (_e, id: string) => svc.removeItem(id))
@@ -162,16 +179,18 @@ function registerIpc(): void {
   ipcMain.handle('service:setDuration', (_e, id: string, seconds: number) => svc.setDuration(id, seconds))
   ipcMain.handle('service:moveItem', (_e, id: string, toIndex: number) => svc.moveItem(id, toIndex))
   ipcMain.handle('service:setItemStatus', (_e, id: string, status: ItemStatus) => svc.setItemStatus(id, status))
+
+  // ---- Live ----
+  ipcMain.handle('live:target', (_e, target: Target) => svc.setTarget(target))
   ipcMain.handle('live:go', (_e, id: string) => svc.goLive(id))
   ipcMain.handle('live:next', () => svc.next())
   ipcMain.handle('live:previous', () => svc.previous())
-  ipcMain.handle('live:clear', () => svc.clearLive(true))
-  ipcMain.handle('live:setPlaying', (_e, playing: boolean) => svc.setPlaying(playing))
-  ipcMain.handle('live:seek', (_e, seconds: number) => svc.seek(seconds))
+  ipcMain.handle('live:clear', (_e, groupId?: string) => svc.clear(groupId))
+  ipcMain.handle('live:setPlaying', (_e, take: number, playing: boolean) => svc.setPlaying(take, playing))
+  ipcMain.handle('live:seek', (_e, take: number, seconds: number) => svc.seek(take, seconds))
+  ipcMain.handle('live:overlay', (_e, name: keyof Overlays, on: boolean) => svc.setOverlay(name, on))
 
-  ipcMain.on('output:playback', (_e, info: Omit<PlaybackInfo, 'itemId'> & { ended: boolean }) =>
-    svc.reportPlayback(info)
-  )
+  ipcMain.on('output:playback', (_e, info: PlaybackInfo & { ended: boolean }) => svc.reportPlayback(info))
 }
 
 function watchScreens(): void {
@@ -192,11 +211,15 @@ function openCurrentService(): void {
     settings.currentServiceId = service.id
     saveSettings(settings)
   }
-  svc.initService(service)
-  svc.onServiceChanged((outputsChanged) => {
-    sendServiceState()
-    if (outputsChanged) renderOutputs()
+  svc.connectService({
+    groups: () => settings.groups,
+    hasLogo: () => !!settings.logo?.url,
+    onChange: (outputsChanged) => {
+      sendServiceState()
+      if (outputsChanged) renderOutputs()
+    }
   })
+  svc.initService(service)
 }
 
 // Only one copy of the app may run, so two apps never fight over the screens.
@@ -212,6 +235,7 @@ if (!app.requestSingleInstanceLock()) {
     handleMediaScheme()
     settings = loadSettings()
     openCurrentService()
+    groups.connectGroups(settings, setupChanged)
     registerIpc()
     onTestWindowsChanged(sendScreensState)
     watchScreens()

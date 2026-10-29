@@ -4,21 +4,24 @@ import { readdir, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import type {
   AddFilesResult,
-  Group,
+  GroupConfig,
+  GroupLive,
   ItemStatus,
   ItemType,
+  Overlays,
   PlaybackInfo,
   Service,
   ServiceItem,
-  ServiceState
+  ServiceState,
+  Target
 } from '../shared/types'
 import { cacheFile, mediaUrl } from './cache'
 import { saveService } from './serviceStore'
 
-// The service order and the live state. The main process owns this state;
-// windows only show it and send commands.
+// The service order and the live state of each group. The main process owns
+// this state; windows only show it and send commands.
 
-const typeByExtension: Record<string, ItemType> = {
+export const typeByExtension: Record<string, ItemType> = {
   '.mp4': 'video',
   '.m4v': 'video',
   '.mov': 'video',
@@ -35,17 +38,35 @@ const typeByExtension: Record<string, ItemType> = {
 const ignoredNames = new Set(['thumbs.db', 'desktop.ini', '.ds_store'])
 
 let service: Service
-const group: Group = { id: 'main', name: 'Main', outputIds: [], live: null }
-let playback: PlaybackInfo | null = null
+/** Live state by group id. */
+const live = new Map<string, GroupLive>()
+const playback = new Map<number, PlaybackInfo>()
+let target: Target = 'all'
+const overlays: Overlays = { black: false, logo: false }
 let take = 0
 let seekId = 0
 
+let getGroups: () => GroupConfig[] = () => []
+let hasLogo: () => boolean = () => false
 let notify: (outputsChanged: boolean) => void = () => {}
 let saveTimer: NodeJS.Timeout | null = null
 
-/** `outputsChanged` is false when only the control window needs an update. */
-export function onServiceChanged(callback: (outputsChanged: boolean) => void): void {
-  notify = callback
+export function connectService(options: {
+  groups: () => GroupConfig[]
+  hasLogo: () => boolean
+  onChange: (outputsChanged: boolean) => void
+}): void {
+  getGroups = options.groups
+  hasLogo = options.hasLogo
+  notify = options.onChange
+}
+
+/** Call after the outputs, groups, logo or idle files change. */
+export function groupsChanged(): void {
+  const ids = new Set(getGroups().map((g) => g.id))
+  for (const id of [...live.keys()]) if (!ids.has(id)) clearGroups([id], true)
+  if (target !== 'all' && !ids.has(target)) target = 'all'
+  changed({ save: false })
 }
 
 function changed(options: { save?: boolean; outputs?: boolean } = {}): void {
@@ -73,12 +94,12 @@ export function initService(loaded: Service): void {
   }
 }
 
-export function setGroupOutputs(outputIds: string[]): void {
-  group.outputIds = outputIds
+export function groupLive(groupId: string): GroupLive {
+  return live.get(groupId) ?? { content: null }
 }
 
-export function getGroup(): Group {
-  return group
+export function getOverlays(): Overlays {
+  return overlays
 }
 
 export function findItem(itemId: string): ServiceItem | undefined {
@@ -87,7 +108,15 @@ export function findItem(itemId: string): ServiceItem | undefined {
 
 export function serviceState(): ServiceState {
   const next = nextIndex()
-  return { service, group, playback, nextItemId: next >= 0 ? service.items[next].id : null }
+  return {
+    service,
+    groups: getGroups().map((config) => ({ config, live: groupLive(config.id) })),
+    target,
+    playback: Object.fromEntries(playback),
+    nextItemId: next >= 0 ? service.items[next].id : null,
+    overlays,
+    logoReady: hasLogo()
+  }
 }
 
 // ---- Adding and changing items ----
@@ -99,7 +128,7 @@ function itemType(path: string): ItemType | null {
 }
 
 /** Sort by file name the way people expect: "2" before "10". */
-function byFileName(a: string, b: string): number {
+export function byFileName(a: string, b: string): number {
   return basename(a).localeCompare(basename(b), undefined, { numeric: true, sensitivity: 'base' })
 }
 
@@ -172,7 +201,7 @@ export function retryCopy(itemId: string): void {
 }
 
 export function removeItem(itemId: string): void {
-  if (group.live?.itemId === itemId) clearLive(false)
+  clearGroups(groupsShowing(itemId), false)
   service.items = service.items.filter((i) => i.id !== itemId)
   changed()
 }
@@ -189,7 +218,7 @@ export function setItemStatus(itemId: string, status: ItemStatus): void {
   const item = findItem(itemId)
   if (!item) return
   if (status === 'live') return goLive(itemId)
-  if (group.live?.itemId === itemId) clearLive(false)
+  clearGroups(groupsShowing(itemId), false)
   item.status = status
   changed()
 }
@@ -204,11 +233,53 @@ export function setDuration(itemId: string, seconds: number): void {
 // ---- Live ----
 
 function isReady(item: ServiceItem): boolean {
-  return item.cache === 'ready' && !!item.localCopyPath
+  return item.cache === 'ready' && !!item.url
+}
+
+function liveItemIds(): Set<string> {
+  const ids = new Set<string>()
+  for (const g of live.values()) if (g.content) ids.add(g.content.itemId)
+  return ids
+}
+
+function groupsShowing(itemId: string): string[] {
+  return [...live].filter(([, g]) => g.content?.itemId === itemId).map(([id]) => id)
+}
+
+/** Items that were live and are not live in any group now get "done" (or "pending"). */
+function updateStatuses(before: Set<string>, markDone: boolean): void {
+  const now = liveItemIds()
+  for (const id of now) {
+    const item = findItem(id)
+    if (item) item.status = 'live'
+  }
+  for (const id of before) {
+    const item = findItem(id)
+    if (item && !now.has(id)) item.status = markDone ? 'done' : 'pending'
+  }
+  // Forget playback of takes that no group shows.
+  const takes = new Set([...live.values()].map((g) => g.content?.take))
+  for (const t of [...playback.keys()]) if (!takes.has(t)) playback.delete(t)
+}
+
+function targetGroupIds(t: Target = target): string[] {
+  const groups = getGroups()
+  return t === 'all' ? groups.map((g) => g.id) : groups.filter((g) => g.id === t).map((g) => g.id)
+}
+
+/**
+ * The group that "Next" and "Previous" follow: the target group, or, for
+ * "all", the first group that shows something.
+ */
+function referenceLive(): GroupLive | undefined {
+  const ids = targetGroupIds()
+  const showing = ids.find((id) => groupLive(id).content)
+  return groupLive(showing ?? ids[0] ?? '')
 }
 
 function liveIndex(): number {
-  return group.live ? service.items.findIndex((i) => i.id === group.live!.itemId) : -1
+  const content = referenceLive()?.content
+  return content ? service.items.findIndex((i) => i.id === content.itemId) : -1
 }
 
 /**
@@ -216,73 +287,103 @@ function liveIndex(): number {
  * when nothing is live, the first pending item. Items that are not copied yet are skipped.
  */
 function nextIndex(): number {
-  const live = liveIndex()
+  const current = liveIndex()
   const items = service.items
-  for (let i = live >= 0 ? live + 1 : 0; i < items.length; i++) {
+  for (let i = current >= 0 ? current + 1 : 0; i < items.length; i++) {
     if (!isReady(items[i])) continue
-    if (live >= 0 || items[i].status === 'pending') return i
+    if (current >= 0 || items[i].status === 'pending') return i
   }
   return -1
 }
 
+export function setTarget(t: Target): void {
+  target = t === 'all' || getGroups().some((g) => g.id === t) ? t : 'all'
+  changed({ save: false, outputs: false })
+}
+
 export function goLive(itemId: string): void {
   const item = findItem(itemId)
-  if (!item || !isReady(item)) return
-  const current = group.live && findItem(group.live.itemId)
-  if (current && current.id !== item.id) current.status = 'done'
-  item.status = 'live'
-  group.live = { itemId: item.id, take: ++take, playing: true }
-  playback = null
+  const ids = targetGroupIds()
+  if (!item || !isReady(item) || ids.length === 0) return
+  const before = liveItemIds()
+  take++
+  for (const id of ids) {
+    live.set(id, { ...groupLive(id), content: { itemId: item.id, type: item.type, url: item.url!, take, playing: true } })
+  }
+  updateStatuses(before, true)
   changed()
 }
 
 export function next(): void {
   const i = nextIndex()
   if (i >= 0) goLive(service.items[i].id)
-  else if (group.live) clearLive(true) // The last item ended: go to idle.
+  else clearGroups(targetGroupIds(), true) // The last item ended: go to idle.
 }
 
 export function previous(): void {
   const items = service.items
-  const live = liveIndex()
-  const anchor = live >= 0 ? live : nextIndex() >= 0 ? nextIndex() : items.length
+  const current = liveIndex()
+  const nextI = nextIndex()
+  const anchor = current >= 0 ? current : nextI >= 0 ? nextI : items.length
   for (let i = anchor - 1; i >= 0; i--) {
     if (isReady(items[i])) return goLive(items[i].id)
   }
 }
 
-/** Stop showing the live item. The group shows its idle screen (black for now). */
-export function clearLive(markDone = true): void {
-  if (!group.live) return
-  const item = findItem(group.live.itemId)
-  if (item && markDone) item.status = 'done'
-  group.live = null
-  playback = null
+/** Stop showing content in these groups. They show their idle screen. */
+function clearGroups(groupIds: string[], markDone: boolean): void {
+  const before = liveItemIds()
+  let any = false
+  for (const id of groupIds) {
+    const g = live.get(id)
+    if (g?.content) {
+      live.set(id, { ...g, content: null })
+      any = true
+    }
+  }
+  if (!any) return
+  updateStatuses(before, markDone)
   changed()
 }
 
-export function setPlaying(playing: boolean): void {
-  if (!group.live) return
-  group.live = { ...group.live, playing }
+export function clear(groupId?: string): void {
+  clearGroups(groupId ? [groupId] : targetGroupIds(), true)
+}
+
+/** Change the content of every group that shows this take. */
+function updateTake(t: number, change: (c: NonNullable<GroupLive['content']>) => void): void {
+  for (const g of live.values()) if (g.content?.take === t) change(g.content)
   changed({ save: false })
 }
 
-export function seek(seconds: number): void {
-  if (!group.live) return
-  group.live = { ...group.live, seekTo: Math.max(0, seconds), seekId: ++seekId }
+export function setPlaying(t: number, playing: boolean): void {
+  updateTake(t, (c) => (c.playing = playing))
+}
+
+export function seek(t: number, seconds: number): void {
+  const id = ++seekId
+  updateTake(t, (c) => {
+    c.seekTo = Math.max(0, seconds)
+    c.seekId = id
+  })
+}
+
+export function setOverlay(name: keyof Overlays, on: boolean): void {
+  overlays[name] = on
   changed({ save: false })
 }
 
-/** Called by the output that plays the sound. */
-export function reportPlayback(info: Omit<PlaybackInfo, 'itemId'> & { ended: boolean }): void {
-  const live = group.live
-  if (!live || info.take !== live.take) return
-  if (info.duration) setDuration(live.itemId, info.duration)
+/** Called by the output that plays the sound of a take. */
+export function reportPlayback(info: PlaybackInfo & { ended: boolean }): void {
+  const groupIds = [...live].filter(([, g]) => g.content?.take === info.take).map(([id]) => id)
+  if (groupIds.length === 0) return
+  const itemId = live.get(groupIds[0])!.content!.itemId
+  if (info.duration) setDuration(itemId, info.duration)
   if (info.ended) {
     // Default "when it ends" action: mark done and go to the idle screen.
-    clearLive(true)
+    clearGroups(groupIds, true)
     return
   }
-  playback = { itemId: live.itemId, take: info.take, currentTime: info.currentTime, duration: info.duration, playing: info.playing }
+  playback.set(info.take, { take: info.take, currentTime: info.currentTime, duration: info.duration, playing: info.playing })
   notify(false)
 }
