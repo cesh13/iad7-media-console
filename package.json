@@ -9,8 +9,8 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit"
   },
-  "author": "",
-  "license": "UNLICENSED",
+  "author": "Cesar Molina",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
