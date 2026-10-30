@@ -110,17 +110,37 @@ tag must be on GitHub before the upload, so the release points at this commit.
 ## 8. Build and publish
 
 Check first that no copy of the app is running from `dist/` (a running copy
-locks the files). Then run `npm run release` in the background (it takes a
-few minutes). It builds the installer and uploads it to the GitHub release
-`v<version>`.
+locks the files).
+
+Create the GitHub release first, with the release notes. If the release does
+not exist yet, the two builds (installer and portable) each create one at the
+same moment, and the files end up split over two releases with the same tag.
+Make the JSON body with Node (so the notes are escaped correctly) in the
+scratchpad, then:
+
+```bash
+node -e 'process.stdout.write(JSON.stringify({tag_name:"v<version>",name:"<version>",body:require("fs").readFileSync("build/release-notes.md","utf8")}))' > <scratchpad>/release.json
+curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $GH_TOKEN" \
+  -H "Content-Type: application/json" --data @<scratchpad>/release.json \
+  https://api.github.com/repos/cesh13/iad7-media-console/releases
+```
+
+It must print `201`. Then run `npm run release` in the background (it takes
+a few minutes). It builds the installer and uploads the files to that release.
 
 When it finishes, check:
 
 - `dist/Media Console Setup <version>.exe` and `dist/latest.yml` exist, and
   `latest.yml` has the new version.
-- The output says it uploaded `Media Console Setup <version>.exe`,
-  `.blockmap` and `latest.yml`. If you can, also open
-  `https://github.com/cesh13/iad7-media-console/releases/tag/v<version>`.
+- With the token, `GET https://api.github.com/repos/cesh13/iad7-media-console/releases`
+  shows exactly one release for `v<version>`, not a draft, with these 4 files:
+  `Media-Console-Setup-<version>.exe`, its `.blockmap`, `latest.yml` and
+  `Media-Console-<version>-portable.exe`. Use the token for this check:
+  GitHub caches answers without a token, so they can be old.
+- If there are two releases for the tag anyway, upload the missing files to
+  the one that has `latest.yml`, delete the other one, and check again.
+- Do not test the plain `latest.yml` download address before the upload ends:
+  GitHub caches the "not found" answer for some minutes.
 
 If the upload fails (for example the token is wrong), show the error. The
 commit and tag are already pushed, and that is fine: fix the cause and run
