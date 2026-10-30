@@ -16,8 +16,9 @@ The app must:
 - Show a preview before an item goes live.
 - Never show the Windows desktop on a screen during the service.
 
-Non-goals for v1: song database with chords, live streaming, cloud sync, mobile
-remote control.
+Non-goals for v1: song database with chords, live streaming, cloud sync.
+A remote control from a phone or another computer on the church network is
+planned as the last step (section 11).
 
 ## 2. Hardware and screens
 
@@ -171,7 +172,11 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 ### 5.3 Center: Preview
 - Shows the selected item. Nothing goes on screens until **Go live**.
 - "Send to" selector: a group or all screens.
-- Keys: ← → slides, Space next item, Esc clear.
+- Keys: ← → slides or verses (in the Bible tab also ↓ ↑ while text is live), Space next item, Esc twice (within 1.5 s) clear all.
+  Presenter clickers: Page Down / Page Up = next / previous slide, B or . =
+  black screen on/off, Shift+F5 is ignored. F5 stays hotkey 5, so the
+  slideshow button of a clicker can trigger it. One Esc alone does nothing,
+  so that button cannot blank the screens.
 - Item notes and options (auto-mark done, loop, auto-advance).
 - Layout changes by item type, see section 6.
 
@@ -218,7 +223,7 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   and the Audio / Message / Stage buttons.
 - A button opens its **drawer** above the bar (max 300 px, closed by default).
   A second click closes it. The drawer pushes the content up; it never covers
-  the Live panel or the preview. Esc does not close it (Esc clears the screens).
+  the Live panel or the preview. Esc does not close it (Esc twice clears the screens).
 - A **red dot** on Message or Stage while something from that tab is on a
   screen (a lower-third message; a stage message or a running countdown).
 - **Hotkeys:** F1–F8 (logo, prayer background, offering video…). One press =
@@ -245,8 +250,8 @@ See `docs/design/Preview-*.dc.html`.
 
 - **Video:** player, time bar with start/end points and cue markers, −10 s,
   +10 s, jump to cue, volume. When it ends: go to next item / go to idle screen
-  (default) / black / hold last frame / loop. Audio output device, fade in/out,
-  stop background music.
+  (default) / black / hold last frame / loop. Audio output device, fade in/out
+  (on by default), stop background music (on by default).
 - **Song:** verse order chips (drag, repeat, skip; chorus support), verse
   thumbnails, background (video loop), text size and position, max lines,
   optional instrumental track.
@@ -267,6 +272,15 @@ See `docs/design/Preview-*.dc.html`.
 - Current item and next item.
 - Messages from the Stage tab.
 - Controlled from the Stage tab: start, pause, reset, set time.
+- Program of the service: parts with a start time (for example 9:00 Welcome,
+  9:10 Prayer, 9:45 Sermon) and an optional "who". A part ends when the next
+  part starts. It follows the clock only (no button, not linked to the order).
+  The stage screen shows the part now, its time left (yellow at 5 min, red in
+  the last minute) and the next part; the bottom bar of the control window
+  shows the part now and its time left. Never on the main screen.
+- The program is edited in the Stage drawer and saved with the service. "Save
+  as template" keeps it for new services; "Use template" copies it into this
+  service. Each stage group has a "Show the program times" option (default on).
 
 ## 8. Idle screen (instead of the desktop wallpaper)
 
@@ -291,6 +305,8 @@ See `docs/design/Preview-*.dc.html`.
 9. Audio panel (background music, fade, duck, device).
 10. Stage screen: clock, countdown, messages.
 11. Library tab, Favorites, hotkeys, past services.
+12. Remote control on the local network (section 11).
+13. Updates over the internet (section 12).
 
 ## 10. Open questions
 
@@ -298,3 +314,85 @@ See `docs/design/Preview-*.dc.html`.
 - Hymn source: .pptx files, text files, or both? Real numbering?
 - Does the graphics card drive 3 separate (extended) screens? Test once.
 - Is a Lobby screen needed (screen 4)?
+
+## 11. Remote control (local network)
+
+A second person can control the service from a phone, a tablet or another
+computer on the same network. The remote is a web page served by the app. No
+app is installed on the remote device.
+
+**Setup (Screens page, "Remote control" section)**
+- Off by default. A switch turns it on.
+- A PIN of 4 to 8 digits. The app makes a random 4-digit PIN the first time.
+  Changing the PIN signs out all remotes.
+- The section shows the address to open (for example
+  `http://192.168.1.20:5050`) and how many remotes are connected.
+- Port 5050 by default. If the port is in use, the section shows an error.
+- The first time, Windows asks to allow the app through the firewall. Choose
+  "Private networks".
+
+**Security**
+- The remote must enter the PIN once. The app then gives the browser a cookie,
+  so the PIN is not asked again until the app restarts or the PIN changes.
+- After 5 wrong PINs from one address, that address must wait 1 minute.
+- The remote can only run the commands in the list below. It cannot read or
+  change files, settings or the order.
+
+**What the remote shows**
+- The service name, the order (with LIVE and NEXT marks), and what each group
+  shows now: the title, the slide picture, and the video time.
+- The background music: track, playing or paused.
+- A dot that shows if the remote is connected to the app.
+
+**What the remote can do**
+- Next, Previous.
+- Go live with an item (tap the item, then "Go live"), to the target chosen
+  on the remote (All or one group).
+- Slides and Bible/song text: previous and next page.
+- Video: play, pause, back 10 s.
+- Clear a group. Black screen and Logo on and off. Clear text.
+- Background music: play, pause, next, fade out.
+
+The remote does not show video, only titles and pictures. It does not add,
+remove or edit items, and it does not change screens or groups: those need the
+main computer.
+
+**Technical**
+- The main process runs a Node `http` server. `GET /` serves the remote page
+  (built by Vite as `remote.html`; in dev mode the request goes to the Vite
+  dev server). `POST /api/login`, `POST /api/command`, `GET /api/events`
+  (Server-Sent Events with the remote state, at most about 4 times a second),
+  `GET /media/…` (pictures from the media cache).
+- The commands call the same functions as the control window, so the control
+  window and the remote always show the same state.
+
+## 12. Updates over the internet
+
+New versions are published on GitHub Releases
+(`github.com/cesh13/iad7-media-console`, a public repository). The installed
+app updates itself from there. No server of our own is needed.
+
+**On the church computer**
+- The app looks for a new version once, when it starts. Without internet
+  nothing happens and nothing is shown.
+- A new version downloads quietly in the background. While it downloads, the
+  top bar shows "Downloading version 1.3.0 (40%)".
+- When it is downloaded, the top bar shows "Version 1.3.0 is ready" (green).
+  It installs when the app closes. The next start is the new version.
+- The app never restarts by itself, so an update never stops a service.
+  Clicking the green notice asks first, then closes the app, installs the new
+  version and opens it again.
+- Nothing about updates is ever shown on an output screen or on the remote.
+- Only the installed app updates. The dev copy and the portable .exe do not.
+- Settings, services, the media cache and Bibles are in the user data folder,
+  so an update keeps them.
+- Hovering the app name in the top bar shows the version.
+
+**Publishing a new version** (on the developer computer)
+- `npm run release` builds the installer and uploads it to a new GitHub
+  release, with `latest.yml` (the app reads it to find the new version) and the
+  `.blockmap` (so the app downloads only the parts that changed).
+- It needs a GitHub token with write access to the repository in the
+  `GH_TOKEN` environment variable. The token is only on the developer
+  computer, never in the app.
+- The `ship` skill (`.claude/skills/ship/`) does all the steps.

@@ -16,6 +16,7 @@ import type {
   ItemType,
   Overlays,
   PlaybackInfo,
+  ProgramPart,
   Service,
   ServiceItem,
   ServiceState,
@@ -24,7 +25,8 @@ import type {
   TextLayer,
   UndoKind
 } from '../shared/types'
-import { bibleDefaults, buildScreens, listBibles } from './bible'
+import { sortedParts } from '../shared/program'
+import { bibleDefaults, buildScreens, getChapter, listBibles } from './bible'
 import { mediaUrl } from './cache'
 import { refreshMedia } from './groups'
 import { shownStyle } from './textStyles'
@@ -48,7 +50,7 @@ const autoNextTimers = new Map<number, NodeJS.Timeout>()
 /** The audio layer: an audio item from the order that plays now (one for all groups). */
 let audioLayer: { itemId: string; take: number } | null = null
 let audioHooks: {
-  playItem: (itemId: string, title: string, url: string) => void
+  playItem: (itemId: string, title: string, url: string, volume: number) => void
   stopItem: () => void
   stopMusic: () => void
   orderEnded: () => void
@@ -118,7 +120,7 @@ export function flushSave(): void {
 }
 
 export function defaultSettings(type: ItemType): ItemSettings {
-  if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: false, cues: [] }
+  if (type === 'video') return { autoDone: true, volume: 1, endAction: 'idle', fade: true, stopMusic: true, cues: [] }
   if (type === 'slides') return { autoDone: true, autoAdvance: null, loop: false }
   if (type === 'bible') return bibleDefaults()
   if (type === 'song') return { ...bibleDefaults(), refPosition: 'hide', versesPerScreen: 1, background: null }
@@ -202,7 +204,7 @@ function setStatus(itemId: string, status: ItemStatus): void {
 /** The service state without the stage and library parts (index.ts adds them). */
 export function serviceState(): Omit<
   ServiceState,
-  'stageTimer' | 'stageMessage' | 'messages' | 'services' | 'library' | 'favorites' | 'textStyles'
+  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'services' | 'library' | 'favorites' | 'textStyles'
 > {
   refreshFolders()
   const next = nextIndex()
@@ -360,6 +362,17 @@ export function removeItem(itemId: string): void {
   changed()
 }
 
+/** Mark every done item as not done again. The live item stays live. */
+export function resetProgress(): void {
+  let any = false
+  for (const item of service.items) {
+    if (item.status !== 'done') continue
+    item.status = 'pending'
+    any = true
+  }
+  if (any) changed()
+}
+
 export function moveItem(itemId: string, toIndex: number): void {
   const from = service.items.findIndex((i) => i.id === itemId)
   if (from < 0 || from === toIndex) return
@@ -427,7 +440,7 @@ export function setDuration(itemId: string, seconds: number): void {
 
 // ---- Live ----
 
-function isReady(item: ServiceItem): boolean {
+export function isReady(item: ServiceItem): boolean {
   if (item.type === 'countdown') return true
   if (item.type === 'folder') return !!item.child && isReady(item.child)
   if (item.type === 'song') return item.cache === 'ready' && !!item.stanzas?.length
@@ -781,6 +794,17 @@ export function renameService(name: string): void {
   changed()
 }
 
+// ---- Program (parts of the service by clock time) ----
+
+export function program(): ProgramPart[] {
+  return service.program ?? []
+}
+
+export function setProgram(parts: ProgramPart[]): void {
+  service.program = sortedParts(parts.map((p) => ({ ...p, title: p.title.trim(), who: p.who?.trim() || undefined })))
+  changed()
+}
+
 /** Copy items of a past service to the end of this one: all "not done"; folders keep the folder, not the chosen file (SPEC 5.2). */
 export function copyOrder(from: Service): void {
   if (from.items.length) saveUndo('copy')
@@ -876,7 +900,7 @@ export function stageInfo(groupId: string): {
 function playAudioItem(item: ServiceItem): void {
   const before = liveItemIds()
   audioLayer = { itemId: item.id, take: ++take }
-  audioHooks.playItem(item.id, item.title, item.url!)
+  audioHooks.playItem(item.id, item.title, item.url!, item.settings.volume ?? 1)
   updateStatuses(before, true)
   changed()
 }
@@ -922,7 +946,8 @@ function showText(
   settings: ItemSettings,
   title: string,
   ref?: BibleRef,
-  startVerse?: number
+  startVerse?: number,
+  historyRef = ref
 ): void {
   if (screens.length === 0 || groupIds.length === 0) return
   const before = liveItemIds()
@@ -933,7 +958,7 @@ function showText(
     const g = groupLive(id)
     live.set(id, { content: settings.mode === 'lower' ? g.content : null, text: { ...text } })
   }
-  if (ref) remember(ref)
+  if (historyRef) remember(historyRef)
   updateStatuses(before, true)
   changed()
 }
@@ -976,7 +1001,10 @@ export function addBibleToOrder(ref: BibleRef): void {
 /** "Show now" in the Bible panel: live on the target, not added to the order. */
 export function showBibleNow(ref: BibleRef, startVerse?: number): void {
   const settings = bibleDefaults()
-  showText(targetGroupIds(), null, buildScreens(ref, settings), settings, refLabel(ref), ref, startVerse)
+  // The whole chapter goes live, starting at the chosen verse, so the next and
+  // previous keys can go on to the verses around it.
+  const chapter = { ...ref, from: 1, to: Math.max(ref.to, getChapter(ref.bibleId, ref.book, ref.chapter).length) }
+  showText(targetGroupIds(), null, buildScreens(chapter, settings), settings, refLabel(ref), chapter, startVerse ?? ref.from, ref)
 }
 
 /** Songs and typed text use the song style; Bible passages and messages use the Bible style. */

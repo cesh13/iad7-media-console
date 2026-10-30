@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
 import { AudioTab, MusicStrip } from './AudioTab'
+import { ProgramStatus } from './ProgramEditor'
 import { HotkeysBar, ServiceBar } from './ServiceBar'
 import { MessageTab, StageTab, messageIsLive } from './StageTab'
 
@@ -31,6 +32,7 @@ export function QuickPanel({ state, onEditHotkeys }: { state: ServiceState; onEd
       )}
       <div className="quick-bar">
         <ServiceBar state={state} />
+        <ProgramStatus state={state} />
         <HotkeysBar state={state} onEdit={onEditHotkeys} />
         <MusicStrip />
         <nav className="quick-tabs">

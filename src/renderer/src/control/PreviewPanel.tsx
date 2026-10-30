@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ContentLayer, EndAction, ImageFit, ItemSettings, ServiceItem, ServiceState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
 import { ScreenView, type PlaybackReport } from '../view/ScreenView'
 import { useAudioDevices } from './AudioTab'
 import { BiblePreview, SongPreview } from './BiblePreview'
+import { MediaButton } from './MediaIcons'
 
 const api = window.mediaConsole
 
@@ -105,7 +106,7 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
     <section className="panel preview">
       <div className="preview-head">
         <h2 className="label">{strings.previewLabel}</h2>
-        <div className="preview-title">
+        <div className="preview-title" title={item.path}>
           <span className="selected-title">{item.title}</span>
           <span className="dim mono">{metaLine(item)}</span>
         </div>
@@ -115,22 +116,24 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
         </button>
       </div>
 
-      <div className="preview-box">
-        {content && (
-          <ScreenView
-            content={content}
-            idle={blackIdle}
-            overlays={noOverlays}
-            onPlayback={(r) => {
-              setTime(r)
-              if (r.ended) setPlaying(false)
-            }}
-          />
-        )}
-        {!ready && <span className="dim preview-wait">{item.cache === 'error' ? item.cacheError : strings.notReady}</span>}
-        {item.type === 'audio' && ready && <span className="preview-wait audio-preview">♪ {strings.audioItemNote}</span>}
-        {item.type === 'video' && ready && <span className="preview-muted">{strings.previewMuted}</span>}
-      </div>
+      <PreviewStage item={item}>
+        <div className="preview-box">
+          {content && (
+            <ScreenView
+              content={content}
+              idle={blackIdle}
+              overlays={noOverlays}
+              onPlayback={(r) => {
+                setTime(r)
+                if (r.ended) setPlaying(false)
+              }}
+            />
+          )}
+          {!ready && <span className="dim preview-wait">{item.cache === 'error' ? item.cacheError : strings.notReady}</span>}
+          {item.type === 'audio' && ready && <span className="preview-wait audio-preview">♪ {strings.audioItemNote}</span>}
+          {item.type === 'video' && ready && <span className="preview-muted">{strings.previewMuted}</span>}
+        </div>
+      </PreviewStage>
 
       {item.type === 'video' && ready && (
         <VideoOptions
@@ -153,44 +156,51 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
   )
 }
 
-/** Notes, "auto-mark done", mark done, remove: the same for every item type. */
-export function NotesAndStatus({ item }: { item: ServiceItem }) {
+/**
+ * The preview picture with the item notes in a column on its right. The notes
+ * use the empty space next to the 16:9 picture. The same for every item type.
+ */
+export function PreviewStage({ item, children }: { item: ServiceItem; children: ReactNode }) {
   return (
-    <div className="preview-common">
-      <label className="field-col">
+    <div className="preview-stage">
+      {children}
+      <label className="preview-notes">
         <span className="label-inline">{strings.notes}</span>
         <NotesInput item={item} />
       </label>
-      <div className="field-col">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={item.settings.autoDone}
-            onChange={(e) => void api.updateItem(item.id, { settings: { autoDone: e.target.checked } })}
-          />
-          {strings.autoDone}
-        </label>
-        <div className="button-row">
-          {item.status === 'done' ? (
-            <button className="btn" onClick={() => void api.setItemStatus(item.id, 'pending')}>
-              {strings.markPending}
-            </button>
-          ) : (
-            <button className="btn" onClick={() => void api.setItemStatus(item.id, 'done')}>
-              {strings.markDone}
-            </button>
-          )}
-          {item.cache === 'error' && (
-            <button className="btn" onClick={() => void api.retryCopy(item.id)}>
-              {strings.retryCopy}
-            </button>
-          )}
-          <button className="btn btn-quiet" onClick={() => void api.removeItem(item.id)}>
-            {strings.remove}
-          </button>
-        </div>
-        {item.path && <span className="mono dim path">{item.path}</span>}
-      </div>
+    </div>
+  )
+}
+
+/** "Auto-mark done", mark done, remove: one row, the same for every item type. */
+export function NotesAndStatus({ item }: { item: ServiceItem }) {
+  return (
+    <div className="preview-common">
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={item.settings.autoDone}
+          onChange={(e) => void api.updateItem(item.id, { settings: { autoDone: e.target.checked } })}
+        />
+        {strings.autoDone}
+      </label>
+      {item.status === 'done' ? (
+        <button className="btn btn-small" onClick={() => void api.setItemStatus(item.id, 'pending')}>
+          {strings.markPending}
+        </button>
+      ) : (
+        <button className="btn btn-small" onClick={() => void api.setItemStatus(item.id, 'done')}>
+          {strings.markDone}
+        </button>
+      )}
+      {item.cache === 'error' && (
+        <button className="btn btn-small" onClick={() => void api.retryCopy(item.id)}>
+          {strings.retryCopy}
+        </button>
+      )}
+      <button className="btn btn-small btn-quiet" onClick={() => void api.removeItem(item.id)}>
+        {strings.remove}
+      </button>
     </div>
   )
 }
@@ -241,15 +251,9 @@ function VideoOptions(props: {
   return (
     <div className="video-options">
       <div className="video-controls">
-        <button className="btn" onClick={onPlay}>
-          {playing ? strings.pause : strings.play}
-        </button>
-        <button className="btn" onClick={() => onJump(now - 10)}>
-          {strings.back10}
-        </button>
-        <button className="btn" onClick={() => onJump(now + 10)}>
-          {strings.forward10}
-        </button>
+        <MediaButton icon={playing ? 'pause' : 'play'} label={playing ? strings.pause : strings.play} onClick={onPlay} />
+        <MediaButton icon="back10" label={strings.back10} quiet onClick={() => onJump(now - 10)} />
+        <MediaButton icon="forward10" label={strings.forward10} quiet onClick={() => onJump(now + 10)} />
         <span className="mono">{formatTime(now)}</span>
         <div className="timebar-wrap">
           <input
@@ -268,30 +272,57 @@ function VideoOptions(props: {
           ))}
         </div>
         <span className="mono dim">{formatTime(duration || undefined)}</span>
+        <span className="tool-sep" />
+        <button className="btn btn-small" title={strings.points} onClick={() => set({ start: now })}>
+          {strings.setStart} {s.start ? formatTime(s.start) : ''}
+        </button>
+        <button className="btn btn-small" title={strings.points} onClick={() => set({ end: now > (s.start ?? 0) ? now : undefined })}>
+          {strings.setEnd} {s.end ? formatTime(s.end) : ''}
+        </button>
+        {(s.start || s.end) && (
+          <button className="btn btn-small btn-quiet" title={strings.clearPoints} onClick={() => set({ start: undefined, end: undefined })}>
+            ✕
+          </button>
+        )}
       </div>
 
-      <div className="option-grid">
+      <div className="option-cols">
         <div className="option">
-          <span className="label-inline">{strings.points}</span>
-          <div className="button-row tight">
-            <button className="btn btn-small" onClick={() => set({ start: now })}>
-              {strings.setStart} {s.start ? formatTime(s.start) : ''}
-            </button>
-            <button className="btn btn-small" onClick={() => set({ end: now > (s.start ?? 0) ? now : undefined })}>
-              {strings.setEnd} {s.end ? formatTime(s.end) : ''}
-            </button>
-            {(s.start || s.end) && (
-              <button className="btn btn-small btn-quiet" onClick={() => set({ start: undefined, end: undefined })}>
-                {strings.clearPoints}
-              </button>
-            )}
+          <span className="label-inline">{strings.whenEnds}</span>
+          <select
+            className="input select"
+            value={s.endAction ?? 'idle'}
+            onChange={(e) => set({ endAction: e.target.value as EndAction })}
+          >
+            {endActions.map((a) => (
+              <option key={a} value={a}>
+                {strings.endActions[a]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="option">
+          <span className="label-inline">{strings.soundLabel}</span>
+          <div className="volume-row">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={s.volume ?? 1}
+              title={strings.volume}
+              onChange={(e) => set({ volume: Number(e.target.value) })}
+            />
+            <span className="mono">{Math.round((s.volume ?? 1) * 100)}%</span>
           </div>
+          <VideoAudioOptions item={item} set={set} />
         </div>
 
         <div className="option">
           <span className="label-inline">{strings.cues}</span>
           <form
-            className="button-row tight"
+            className="cue-form"
             onSubmit={(e) => {
               e.preventDefault()
               const label = cueLabel.trim() || formatTime(now)
@@ -305,8 +336,8 @@ function VideoOptions(props: {
               placeholder={strings.cuePlaceholder}
               onChange={(e) => setCueLabel(e.target.value)}
             />
-            <button className="btn btn-small" type="submit">
-              + {strings.addCue} {formatTime(now)}
+            <button className="btn btn-small" type="submit" title={strings.addCue}>
+              + {formatTime(now)}
             </button>
           </form>
           {cues.map((c) => (
@@ -327,42 +358,6 @@ function VideoOptions(props: {
             </div>
           ))}
         </div>
-
-        <div className="option">
-          <span className="label-inline">{strings.volume}</span>
-          <div className="button-row tight">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={s.volume ?? 1}
-              onChange={(e) => set({ volume: Number(e.target.value) })}
-            />
-            <span className="mono">{Math.round((s.volume ?? 1) * 100)}%</span>
-            <label className="check">
-              <input type="checkbox" checked={!!s.fade} onChange={(e) => set({ fade: e.target.checked })} />
-              {strings.fade}
-            </label>
-          </div>
-        </div>
-
-        <VideoAudioOptions item={item} set={set} />
-
-        <div className="option">
-          <span className="label-inline">{strings.whenEnds}</span>
-          <div className="chips">
-            {endActions.map((a) => (
-              <button
-                key={a}
-                className={(s.endAction ?? 'idle') === a ? 'chip is-on' : 'chip'}
-                onClick={() => set({ endAction: a })}
-              >
-                {strings.endActions[a]}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )
@@ -373,9 +368,8 @@ function VideoAudioOptions({ item, set }: { item: ServiceItem; set: (s: Partial<
   const devices = useAudioDevices()
   const s = item.settings
   return (
-    <div className="option">
-      <span className="label-inline">{strings.audioLabel}</span>
-      <select className="input select" value={s.audioDevice ?? ''} onChange={(e) => set({ audioDevice: e.target.value })}>
+    <>
+      <select className="input select" title={strings.audioLabel} value={s.audioDevice ?? ''} onChange={(e) => set({ audioDevice: e.target.value })}>
         <option value="">{strings.mainDevice}</option>
         {devices
           .filter((d) => d.deviceId !== 'default')
@@ -386,10 +380,14 @@ function VideoAudioOptions({ item, set }: { item: ServiceItem; set: (s: Partial<
           ))}
       </select>
       <label className="check">
+        <input type="checkbox" checked={!!s.fade} onChange={(e) => set({ fade: e.target.checked })} />
+        {strings.fade}
+      </label>
+      <label className="check">
         <input type="checkbox" checked={!!s.stopMusic} onChange={(e) => set({ stopMusic: e.target.checked })} />
         {strings.stopMusic}
       </label>
-    </div>
+    </>
   )
 }
 
@@ -430,9 +428,11 @@ function CountdownPreview({ state, item }: { state: ServiceState; item: ServiceI
           {strings.goLive} ⏎
         </button>
       </div>
-      <div className="preview-box">
-        <ScreenView content={content} idle={blackIdle} overlays={noOverlays} />
-      </div>
+      <PreviewStage item={item}>
+        <div className="preview-box">
+          <ScreenView content={content} idle={blackIdle} overlays={noOverlays} />
+        </div>
+      </PreviewStage>
       <div className="option-grid">
         <div className="option">
           <span className="label-inline">{strings.countdownMode}</span>

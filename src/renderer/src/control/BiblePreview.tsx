@@ -3,7 +3,7 @@ import { shownStyle } from '../../../shared/textStyle'
 import type { BibleScreen, ItemSettings, ServiceItem, ServiceState, TextLayer } from '../../../shared/types'
 import { strings } from '../strings'
 import { ScreenView } from '../view/ScreenView'
-import { NotesAndStatus, TargetSelect } from './PreviewPanel'
+import { NotesAndStatus, PreviewStage, TargetSelect } from './PreviewPanel'
 import { previewIdle, TextStyleDialog } from './TextStyleDialog'
 
 const api = window.mediaConsole
@@ -48,9 +48,11 @@ export function BiblePreview({ state, item }: { state: ServiceState; item: Servi
         </button>
       </div>
 
-      <div className="preview-box">
-        {preview && <ScreenView content={null} text={preview} idle={previewIdle(state)} overlays={noOverlays} />}
-      </div>
+      <PreviewStage item={item}>
+        <div className="preview-box">
+          {preview && <ScreenView content={null} text={preview} idle={previewIdle(state)} overlays={noOverlays} />}
+        </div>
+      </PreviewStage>
       {screens[index] && screens[index].text.endsWith('…') && <p className="dim small">{strings.splitNote}</p>}
 
       <div className="chips screen-chips">
@@ -220,9 +222,11 @@ export function SongPreview({ state, item }: { state: ServiceState; item: Servic
         </div>
       ) : (
         <>
-          <div className="preview-box">
-            {preview && <ScreenView content={null} text={preview} idle={previewIdle(state)} overlays={noOverlays} />}
-          </div>
+          <PreviewStage item={item}>
+            <div className="preview-box">
+              {preview && <ScreenView content={null} text={preview} idle={previewIdle(state)} overlays={noOverlays} />}
+            </div>
+          </PreviewStage>
           <div className="chips screen-chips">
             {screens.map((sc, i) => (
               <button

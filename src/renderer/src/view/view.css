@@ -270,3 +270,37 @@
   font-weight: 600;
   color: #5ba4ff;
 }
+
+/* Program of the service on the stage screen. */
+.stage-program {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5cqh;
+  padding: 1.5cqh 1cqw;
+  border-radius: 1cqh;
+  background: #16191d;
+  text-align: center;
+}
+.stage-program-left {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9cqh;
+  font-weight: 500;
+  line-height: 1.05;
+}
+.stage-program-next {
+  font-size: 3.2cqh;
+  color: #868d97;
+}
+.stage-program.is-warn {
+  background: #3a2e14;
+}
+.stage-program.is-warn .stage-program-left {
+  color: #e2b35b;
+}
+.stage-program.is-over {
+  background: #2a1517;
+}
+.stage-program.is-over .stage-program-left {
+  color: #ff5a5f;
+}

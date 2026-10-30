@@ -82,6 +82,15 @@ function ItemAudio({ item, device }: { item: NonNullable<AudioRender['item']>; d
   useEffect(() => {
     if (ref.current) ref.current.volume = item.volume
   }, [item.volume])
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (item.playing) void el.play().catch(() => {})
+    else el.pause()
+  }, [item.playing])
+  useEffect(() => {
+    if (ref.current && item.seekTo !== undefined) ref.current.currentTime = item.seekTo
+  }, [item.seekId])
   useEffect(() => (ref.current ? meterElement(ref.current, (l, r) => api.audioLevels('item', l, r)) : undefined), [])
 
   return (

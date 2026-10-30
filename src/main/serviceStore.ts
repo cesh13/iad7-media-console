@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Service, ServiceSummary } from '../shared/types'
+import type { ProgramPart, Service, ServiceSummary } from '../shared/types'
 
 function servicesDir(): string {
   const dir = join(app.getPath('userData'), 'services')
@@ -15,11 +15,13 @@ function serviceFile(id: string): string {
 }
 
 /** A new service, named like "Culto · sáb 31 oct" (the date in Spanish). */
-export function createService(): Service {
+export function createService(template: ProgramPart[] = []): Service {
   const now = new Date()
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const label = now.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')
-  return { id: randomUUID(), name: `Culto · ${label}`, date, items: [] }
+  // The program starts as a copy of the template (new ids, so edits do not change the template).
+  const program = template.map((p) => ({ ...p, id: randomUUID() }))
+  return { id: randomUUID(), name: `Culto · ${label}`, date, items: [], program }
 }
 
 /** All saved services, newest first. */

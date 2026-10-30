@@ -1,4 +1,5 @@
-import type { StageRender, StageTimer } from '../../../shared/types'
+import { programAt } from '../../../shared/program'
+import type { ProgramPart, StageRender, StageTimer } from '../../../shared/types'
 import { strings } from '../strings'
 import { formatClock, formatCountdown, useNow } from './clock'
 import { ScreenView } from './ScreenView'
@@ -46,6 +47,7 @@ export function StageView({ stage }: { stage: StageRender }) {
         </div>
         <div className="stage-right">
           <div className="stage-clock">{formatClock(now)}</div>
+          {stage.program && <StageProgram parts={stage.program} now={now} />}
           {showTimer && (
             <div className={`stage-timer is-${timerColor(seconds)}`}>
               <span className="stage-label">{t.label}</span>
@@ -64,6 +66,36 @@ export function StageView({ stage }: { stage: StageRender }) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The program on the stage screen: the part that runs now, its time left
+ * (yellow in the last 5 minutes, red in the last minute) and the next part.
+ */
+function StageProgram({ parts, now }: { parts: ProgramPart[]; now: number }) {
+  const { current, endsAt, next, nextAt } = programAt(parts, now)
+  const left = endsAt ? (endsAt - now) / 1000 : null
+  const color = left === null ? 'ok' : left <= 60 ? 'over' : left <= 5 * 60 ? 'warn' : 'ok'
+  return (
+    <div className={`stage-program is-${color}`}>
+      {current ? (
+        <>
+          <span className="stage-label">
+            {current.title}
+            {current.who ? ` · ${current.who}` : ''}
+          </span>
+          {left !== null && <span className="stage-program-left">{strings.programLeft(formatCountdown(left).replace('+', ''))}</span>}
+        </>
+      ) : (
+        next && nextAt && <span className="stage-label">{strings.programStartsAt(next.title, next.start)}</span>
+      )}
+      {current && next && (
+        <span className="stage-program-next">
+          {strings.programNext} {next.start} · {next.title}
+        </span>
+      )}
     </div>
   )
 }

@@ -122,8 +122,13 @@ function parseOsis(xml: string, out: Builder): void {
   }
 }
 
-function parseJson(text: string, out: Builder): void {
+/** Reads the verses into `out`. Returns the version name and abbreviation when the file has them. */
+function parseJson(text: string, out: Builder): { name: string; abbrev: string } {
   const data = JSON.parse(text.replace(/^﻿/, ''))
+  const meta = {
+    name: String(data?.local_title ?? data?.title ?? data?.name ?? '').trim(),
+    abbrev: String(data?.local_abbreviation ?? data?.abbreviation ?? data?.abbrev ?? '').trim()
+  }
   const verseList = (list: unknown[]) => {
     for (const r of list as Record<string, unknown>[]) {
       if (Array.isArray(r)) continue
@@ -138,7 +143,7 @@ function parseJson(text: string, out: Builder): void {
       const [, b, c, v, t] = r.field ?? []
       out.add(bookNumber(b), Number(c), Number(v), String(t ?? '').trim())
     }
-    return
+    return meta
   }
   const list = Array.isArray(data) ? data : (data?.books ?? data?.verses)
   if (!Array.isArray(list)) throw new Error('Unknown JSON format')
@@ -147,8 +152,21 @@ function parseJson(text: string, out: Builder): void {
     list.forEach((book: Record<string, unknown>, i: number) => {
       const b = bookNumber(book.nr ?? book.number ?? book.name ?? book.abbrev) ?? i + 1
       ;(book.chapters as unknown[]).forEach((ch, ci) => {
-        const verses = Array.isArray(ch) ? ch : ((ch as Record<string, unknown>).verses as unknown[])
         const cNum = Array.isArray(ch) ? ci + 1 : Number((ch as Record<string, unknown>).chapter ?? ci + 1)
+        // YouVersion-style export: { items: [{ type: "verse", verse_numbers: [1], lines: ["…"] }] }.
+        // Headings and labels are skipped. A verse split by a paragraph break comes as two items: join them.
+        const items = (ch as Record<string, unknown>).items
+        if (Array.isArray(items)) {
+          for (const it of items as Record<string, unknown>[]) {
+            if (it.type !== 'verse' || !Array.isArray(it.verse_numbers) || !it.verse_numbers.length) continue
+            const vNum = Number(it.verse_numbers[0])
+            const line = (it.lines as unknown[] ?? []).map((l) => String(l).trim()).join(' ').trim()
+            const before = out.books[b - 1]?.[cNum - 1]?.[vNum - 1]
+            out.add(b, cNum, vNum, before ? `${before} ${line}` : line)
+          }
+          return
+        }
+        const verses = Array.isArray(ch) ? ch : ((ch as Record<string, unknown>).verses as unknown[])
         verses?.forEach((v, vi) => {
           if (typeof v === 'string') out.add(b, cNum, vi + 1, v.trim())
           else {
@@ -158,9 +176,10 @@ function parseJson(text: string, out: Builder): void {
         })
       })
     })
-    return
+    return meta
   }
   verseList(list)
+  return meta
 }
 
 function parseText(text: string, out: Builder): void {
@@ -197,7 +216,9 @@ export async function readBibleFile(path: string): Promise<BibleData> {
     name = cleanText(/<title>([\s\S]*?)<\/title>/i.exec(raw)?.[1] ?? '') || name
     abbrev = attr(/<osisText\b([^>]*)>/i.exec(raw)?.[1] ?? '', 'osisIDWork') ?? ''
   } else if (ext === '.json' || /^\s*[[{]/.test(raw)) {
-    parseJson(raw, out)
+    const meta = parseJson(raw, out)
+    name = meta.name || name
+    abbrev = meta.abbrev
   } else {
     parseText(raw, out)
   }

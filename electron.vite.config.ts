@@ -25,12 +25,14 @@ export default defineConfig({
     plugins: [react(), copyPdfjsData()],
     build: {
       rollupOptions: {
-        // Pages: the control window, the output (screen) windows, and the
-        // hidden window that turns PDF pages into pictures.
+        // Pages: the control window, the output (screen) windows, the
+        // hidden window that turns PDF pages into pictures, and the remote
+        // control page (served to phones by the main process).
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
           output: resolve(__dirname, 'src/renderer/output.html'),
-          pdf: resolve(__dirname, 'src/renderer/pdf.html')
+          pdf: resolve(__dirname, 'src/renderer/pdf.html'),
+          remote: resolve(__dirname, 'src/renderer/remote.html')
         }
       }
     }

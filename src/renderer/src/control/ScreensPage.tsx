@@ -3,6 +3,7 @@ import type { GroupConfig, GroupView, OutputStatus, ScreenInfo, ScreensState, Se
 import { strings } from '../strings'
 import { GroupsEditor, LogoSection } from './GroupsEditor'
 import { useScreensState, useServiceState } from './hooks'
+import { RemoteSection } from './RemoteSection'
 import { GroupLiveView } from './ScreensColumn'
 
 const api = window.mediaConsole
@@ -70,6 +71,7 @@ export function ScreensPage() {
 
       <GroupsEditor state={state} />
       <LogoSection state={state} />
+      <RemoteSection />
     </main>
   )
 }

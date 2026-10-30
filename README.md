@@ -14,6 +14,47 @@ npm run dev
 `npm run build` makes the app in `out/`; `npm start` runs that build.
 `npm run typecheck` checks the TypeScript code.
 
+## Make the Windows installer
+
+```bash
+npm run dist
+```
+
+This makes two files in `dist/`:
+
+- `Media Console Setup 1.0.0.exe` – the installer. It adds a desktop and Start
+  menu shortcut. Use this on the church computer.
+- `Media Console-1.0.0-portable.exe` – one file that runs without installing
+  (for example from a USB stick). It starts more slowly.
+
+Copy the installer to the church computer and run it. Windows shows "Windows
+protected your PC" because the app is not signed: click **More info**, then
+**Run anyway**. You do this only once: after that the app updates itself.
+
+## Updates
+
+The installed app looks for a new version on
+[GitHub Releases](https://github.com/cesh13/iad7-media-console/releases) when
+it starts. It downloads it quietly and shows "Version x.y.z is ready" in the
+top bar. The update installs when the app closes, so it never stops a service.
+Settings, services and Bibles are kept, because they are in the user data
+folder, not in the program folder. The portable .exe does not update itself.
+
+To publish a new version, ask Claude Code to "ship" (or "publish an update").
+The `ship` skill in `.claude/skills/ship/` raises the version, checks the
+code, adds the changes to `CHANGELOG.md`, commits and tags the release
+(`v1.2.3`), and runs `npm run release`, which builds the installer and uploads
+it to GitHub.
+
+`npm run release` needs a GitHub token in the `GH_TOKEN` environment variable
+(once: GitHub → Settings → Developer settings → Fine-grained tokens, only this
+repository, Contents: Read and write; then `setx GH_TOKEN "<token>"` and open a
+new terminal). The repository must be public, or the app cannot download the
+update.
+
+Only one copy of the app can run at a time. Close the dev copy (`npm run dev`)
+before you start the installed app on the same computer.
+
 ## First setup on the church computer
 
 1. In Windows display settings, choose **Extend** for all screens (not Duplicate).

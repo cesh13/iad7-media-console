@@ -5,10 +5,12 @@ import type {
   MediaConsoleApi,
   OutputRender,
   PdfJob,
+  RemoteStatus,
   ScreensState,
   ServiceState,
   SharedState,
-  TestInfo
+  TestInfo,
+  UpdateStatus
 } from '../shared/types'
 
 function listen<T>(channel: string, callback: (value: T) => void): () => void {
@@ -46,6 +48,7 @@ const api: MediaConsoleApi = {
   chooseInFolder: (id, path) => invoke('service:chooseInFolder', id, path),
   pathForFile: (file) => webUtils.getPathForFile(file),
   removeItem: (id) => invoke('service:removeItem', id),
+  resetProgress: () => invoke('service:resetProgress'),
   retryCopy: (id) => invoke('service:retryCopy', id),
   setDuration: (id, seconds) => invoke('service:setDuration', id, seconds),
   moveItem: (id, toIndex) => invoke('service:moveItem', id, toIndex),
@@ -62,6 +65,9 @@ const api: MediaConsoleApi = {
   newService: () => invoke('services:new'),
   openService: (id) => invoke('services:open', id),
   renameService: (name) => invoke('services:rename', name),
+  setProgram: (parts) => invoke('program:set', parts),
+  saveProgramTemplate: () => invoke('program:saveTemplate'),
+  useProgramTemplate: () => invoke('program:useTemplate'),
   serviceItems: (id) => invoke('services:items', id),
   copyOrderFrom: (id) => invoke('services:copy', id),
 
@@ -94,6 +100,16 @@ const api: MediaConsoleApi = {
   setSharedFolder: (path) => invoke('shared:set', path),
   addSharedToOrder: (paths) => invoke('shared:add', paths),
   markSharedSeen: (paths) => invoke('shared:seen', paths),
+
+  // Remote control
+  getRemote: () => invoke('remote:get'),
+  onRemoteChanged: (cb) => listen<RemoteStatus>('remote:changed', cb),
+  updateRemote: (change) => invoke('remote:update', change),
+
+  // Updates
+  getUpdate: () => invoke('update:get'),
+  onUpdateChanged: (cb) => listen<UpdateStatus>('update:changed', cb),
+  installUpdate: () => invoke('update:install'),
 
   // Live
   setTarget: (target) => invoke('live:target', target),
@@ -135,6 +151,7 @@ const api: MediaConsoleApi = {
   musicPrevious: () => invoke('audio:previous'),
   musicFadeOut: () => invoke('audio:fadeOut'),
   stopItemAudio: () => invoke('audio:stopItem'),
+  controlItemAudio: (change) => invoke('audio:controlItem', change),
   onAudioRender: (cb) => listen<AudioRender>('audio:render', cb),
   audioReport: (r) => ipcRenderer.send('audio:report', r),
   audioLevels: (source, l, r) => ipcRenderer.send('audio:levels', source, l, r),

@@ -3,3 +3,4 @@ out/
 dist/
 *.log
 src/renderer/public/pdfjs/
+build/release-notes.md

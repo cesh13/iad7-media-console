@@ -158,6 +158,19 @@ function GroupEditor(props: { group: GroupConfig; state: ScreensState; canRemove
       </div>
 
       {stage && <p className="dim small group-note">{strings.stageViewHelp}</p>}
+      {stage && (
+        <div className="group-field">
+          <span className="label-inline">{strings.programLabel}</span>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={group.showProgram !== false}
+              onChange={(e) => void api.updateGroup(group.id, { showProgram: e.target.checked })}
+            />
+            {strings.showProgram}
+          </label>
+        </div>
+      )}
 
       {!stage && (
         <div className="group-field">

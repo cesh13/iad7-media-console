@@ -41,30 +41,23 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
       }}
       onDrop={onDrop}
     >
-      <div className="order-head">
-        <h2 className="label">{strings.orderLabel}</h2>
-        <div className="button-row tight">
-          <button
-            className="btn btn-small btn-quiet"
-            disabled={!state.undo}
-            title={state.undo ? strings.undoHint(state.undo) : strings.nothingToUndo}
-            onClick={() => void api.undo()}
-          >
-            ↶ {strings.undo}
-          </button>
-          <button className="btn btn-small btn-quiet" title={strings.addTextHint} onClick={() => void api.newTextItem().then(onSelect)}>
-            + {strings.addText}
-          </button>
-          <button className="btn btn-small btn-quiet" onClick={() => void api.addCountdown()}>
-            + {strings.addCountdown}
-          </button>
-          <button className="btn btn-small btn-quiet" title={strings.addFolderHint} onClick={() => void api.pickFolder()}>
-            + {strings.addFolder}
-          </button>
-          <button className="btn btn-small" onClick={() => void api.pickFiles().then(showResult)}>
-            + {strings.addFiles}
-          </button>
-        </div>
+      <div className="order-toolbar">
+        <button
+          className="tool-btn"
+          disabled={!state.undo}
+          title={state.undo ? strings.undoHint(state.undo) : strings.nothingToUndo}
+          onClick={() => void api.undo()}
+        >
+          ↶ {strings.undo}
+        </button>
+        <span className="tool-sep" />
+        <button className="tool-btn" title={strings.addTextHint} onClick={() => void api.newTextItem().then(onSelect)}>
+          + {strings.addText}
+        </button>
+        <button className="tool-btn" onClick={() => void api.addCountdown()}>
+          + {strings.addCountdown}
+        </button>
+        <AddMenu onFiles={() => void api.pickFiles().then(showResult)} onFolder={() => void api.pickFolder()} />
       </div>
       {items.length > 0 && (
         <div className="order-progress">
@@ -72,6 +65,7 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
             <div className="progress-fill" style={{ width: `${(done / items.length) * 100}%` }} />
           </div>
           <span className="dim">{strings.progress(done, items.length)}</span>
+          <ResetProgressButton disabled={done === 0} />
         </div>
       )}
       {skipped.length > 0 && <p className="order-note warn">{strings.skippedFiles(skipped)}</p>}
@@ -135,6 +129,81 @@ export function OrderPanel(props: { state: ServiceState; selectedId: string | nu
   )
 }
 
+/**
+ * Reset cannot be undone, so the first click asks and the second click resets.
+ * The question goes away after a few seconds.
+ */
+function ResetProgressButton({ disabled }: { disabled: boolean }) {
+  const [asking, setAsking] = useState(false)
+  useEffect(() => {
+    if (!asking) return
+    const timer = setTimeout(() => setAsking(false), 3000)
+    return () => clearTimeout(timer)
+  }, [asking])
+
+  return (
+    <button
+      className={asking ? 'tool-btn tool-btn-warn' : 'tool-btn'}
+      disabled={disabled}
+      title={strings.resetProgressHint}
+      onClick={() => {
+        if (!asking) return setAsking(true)
+        setAsking(false)
+        void api.resetProgress()
+      }}
+    >
+      ↺ {asking ? strings.resetProgressConfirm : strings.resetProgress}
+    </button>
+  )
+}
+
+/**
+ * One "Add" button for files and folders. The Windows file dialog cannot pick
+ * files and a folder in the same window, so the button opens a small menu.
+ */
+function AddMenu(props: { onFiles: () => void; onFolder: () => void }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const choose = (action: () => void) => {
+    setOpen(false)
+    action()
+  }
+
+  return (
+    <div className="add-menu" ref={box}>
+      <button className={open ? 'tool-btn tool-btn-main is-open' : 'tool-btn tool-btn-main'} onClick={() => setOpen(!open)}>
+        + {strings.addMenu} <span className="add-menu-caret">▾</span>
+      </button>
+      {open && (
+        <div className="add-menu-list" role="menu">
+          <button role="menuitem" onClick={() => choose(props.onFiles)}>
+            <span>{strings.addMenuFiles}</span>
+            <span className="dim">{strings.addMenuFilesHint}</span>
+          </button>
+          <button role="menuitem" onClick={() => choose(props.onFolder)}>
+            <span>{strings.addMenuFolder}</span>
+            <span className="dim">{strings.addFolderHint}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function OrderRow(props: {
   item: ServiceItem
   index: number
@@ -188,7 +257,7 @@ function OrderRow(props: {
         }}
       >
         <StatusMark item={item} isNext={isNext} />
-        <TypeIcon type={item.type} />
+        <TypeIcon type={iconFor(item)} />
         {isFolder && (
           <span className="row-chevron" title={expanded ? strings.folderClose : strings.folderOpen}>
             {expanded ? '▾' : '▸'}
@@ -260,10 +329,21 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
   return <span className="status-pending" />
 }
 
-export function TypeIcon({ type }: { type: ServiceItem['type'] }) {
+/** Icon kinds: the item types, plus "text" for typed text (a song item with no file). */
+export type IconKind = ServiceItem['type'] | 'text'
+
+export function iconFor(item: ServiceItem): IconKind {
+  return item.type === 'song' && !item.path ? 'text' : item.type
+}
+
+export function TypeIcon({ type }: { type: IconKind }) {
   return (
-    <span className="type-icon" title={strings.types[type]}>
-      {type === 'countdown' ? (
+    <span className="type-icon" title={type === 'text' ? strings.typedText : strings.types[type]}>
+      {type === 'text' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+        </svg>
+      ) : type === 'countdown' ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="12" cy="13" r="8" />
           <path d="M12 9v4l2 2M9 2h6" />

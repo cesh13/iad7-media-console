@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
+import { ProgramEditor } from './ProgramEditor'
 import { formatCountdown, useNow } from '../view/clock'
 import { timerColor, timerSeconds } from '../view/StageView'
 
@@ -18,7 +19,7 @@ export function StageTab({ state }: { state: ServiceState }) {
   const hasStage = state.groups.some((g) => g.config.stageView)
 
   return (
-    <div className="stage-tab drawer-cols">
+    <div className="stage-tab drawer-cols drawer-cols-3">
       <div className="drawer-col">
         {!hasStage && <p className="warn small">{strings.noStageGroup}</p>}
         <span className="label-inline">{strings.timerLabel}</span>
@@ -85,6 +86,7 @@ export function StageTab({ state }: { state: ServiceState }) {
           </div>
         )}
       </div>
+      <ProgramEditor state={state} />
     </div>
   )
 }

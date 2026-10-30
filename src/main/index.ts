@@ -8,6 +8,9 @@ import type {
   OutputStatus,
   Overlays,
   PlaybackInfo,
+  ProgramPart,
+  RemoteCommand,
+  RemoteSettings,
   ScreensState,
   Service,
   ServiceState,
@@ -37,10 +40,12 @@ import * as stage from './stage'
 import * as library from './library'
 import { listServices } from './serviceStore'
 import { outputRenders } from './render'
+import * as remote from './remote'
 import * as svc from './service'
 import { createService, loadService } from './serviceStore'
 import { loadSettings, saveSettings } from './settings'
 import * as textStyles from './textStyles'
+import { connectUpdater, installUpdateNow, updateStatus } from './updater'
 import {
   closeTestWindows,
   onTestWindowsChanged,
@@ -102,6 +107,7 @@ function serviceStateFull(): ServiceState {
     stageTimer: stage.stageTimer(),
     stageMessage: stage.stageMessage(),
     messages: stage.savedMessages(),
+    programTemplate: stage.programTemplate(),
     services: listServices(),
     library: library.libraryFolders(),
     favorites: library.favorites(),
@@ -111,6 +117,47 @@ function serviceStateFull(): ServiceState {
 
 function sendServiceState(): void {
   controlWindow?.webContents.send('service:changed', serviceStateFull())
+  remote.remoteStateChanged()
+}
+
+/** A command from a remote (phone or other computer): the same functions as the control window. */
+function runRemoteCommand(cmd: RemoteCommand): void {
+  switch (cmd.name) {
+    case 'next':
+      return svc.next()
+    case 'previous':
+      return svc.previous()
+    case 'goLive':
+      return svc.goLive(cmd.itemId)
+    case 'setTarget':
+      return svc.setTarget(cmd.target)
+    case 'pageStep':
+      return svc.pageStep(cmd.delta)
+    case 'clear':
+      return svc.clear(cmd.groupId)
+    case 'clearText':
+      return svc.clearText('all')
+    case 'overlay':
+      if (cmd.overlay === 'logo' && cmd.on && !settings.logo?.url) return
+      return svc.setOverlay(cmd.overlay, cmd.on)
+    case 'setPlaying':
+      return svc.setPlaying(cmd.take, cmd.playing)
+    case 'seekBy': {
+      const p = svc.serviceState().playback[cmd.take]
+      if (p) svc.seek(cmd.take, Math.max(0, Math.min(p.currentTime + cmd.seconds, p.duration || Infinity)))
+      return
+    }
+    case 'musicPlay':
+      return audio.play()
+    case 'musicPause':
+      return audio.pause()
+    case 'musicNext':
+      return audio.next()
+    case 'musicFadeOut':
+      return audio.fadeOut()
+    case 'audioItemPlaying':
+      return audio.controlItem({ playing: cmd.playing })
+  }
 }
 
 function renderOutputs(): void {
@@ -251,7 +298,7 @@ function registerIpc(): void {
 
   // ---- Services ----
   ipcMain.handle('services:new', () => {
-    const s = createService()
+    const s = createService(stage.programTemplate())
     // Two new services on the same day get different names.
     const same = listServices().filter((x) => x.name.startsWith(s.name)).length
     if (same) s.name = `${s.name} (${same + 1})`
@@ -262,6 +309,9 @@ function registerIpc(): void {
     if (s && id !== svc.currentServiceId()) openService(s)
   })
   ipcMain.handle('services:rename', (_e, name: string) => svc.renameService(name))
+  ipcMain.handle('program:set', (_e, parts: ProgramPart[]) => svc.setProgram(parts))
+  ipcMain.handle('program:saveTemplate', () => stage.saveProgramTemplate())
+  ipcMain.handle('program:useTemplate', () => stage.useProgramTemplate())
   ipcMain.handle('services:items', (_e, id: string) => loadService(id)?.items ?? [])
   ipcMain.handle('services:copy', (_e, id: string) => {
     const s = loadService(id)
@@ -314,6 +364,7 @@ function registerIpc(): void {
   })
   ipcMain.handle('service:chooseInFolder', (_e, id: string, path: string) => svc.chooseInFolder(id, path))
   ipcMain.handle('service:removeItem', (_e, id: string) => svc.removeItem(id))
+  ipcMain.handle('service:resetProgress', () => svc.resetProgress())
   ipcMain.handle('service:retryCopy', (_e, id: string) => svc.retryCopy(id))
   ipcMain.handle('service:setDuration', (_e, id: string, seconds: number) => svc.setDuration(id, seconds))
   ipcMain.handle('service:moveItem', (_e, id: string, toIndex: number) => svc.moveItem(id, toIndex))
@@ -383,6 +434,7 @@ function registerIpc(): void {
   ipcMain.handle('audio:previous', () => audio.previous())
   ipcMain.handle('audio:fadeOut', () => audio.fadeOut())
   ipcMain.handle('audio:stopItem', () => svc.clearAudio())
+  ipcMain.handle('audio:controlItem', (_e, change: Parameters<typeof audio.controlItem>[0]) => audio.controlItem(change))
   ipcMain.on('audio:report', (_e, r: Parameters<typeof audio.report>[0]) => audio.report(r))
   ipcMain.on('audio:levels', (e, source: string, l: number, r: number) => audio.setLevels(`${source}:${e.sender.id}`, l, r))
 
@@ -434,6 +486,12 @@ function registerIpc(): void {
   ipcMain.handle('bible:showNow', (_e, ref: BibleRef, startVerse?: number) => svc.showBibleNow(ref, startVerse))
   ipcMain.handle('bible:showVerse', (_e, verse: number) => svc.showVerse(verse))
   ipcMain.handle('bible:screens', (_e, ref: BibleRef, settings: Partial<ItemSettings>) => svc.bibleScreens(ref, settings))
+
+  // ---- Remote control ----
+  ipcMain.handle('remote:get', () => remote.remoteStatus())
+  ipcMain.handle('remote:update', (_e, change: Partial<RemoteSettings>) => remote.updateRemote(change))
+  ipcMain.handle('update:get', () => updateStatus())
+  ipcMain.handle('update:install', () => installUpdateNow())
 
   ipcMain.on('output:playback', (_e, info: PlaybackInfo & { ended: boolean }) => svc.reportPlayback(info))
 }
@@ -495,7 +553,7 @@ function triggerHotkey(key: number): void {
 function openCurrentService(): void {
   let service = settings.currentServiceId ? loadService(settings.currentServiceId) : null
   if (!service) {
-    service = createService()
+    service = createService(settings.programTemplate)
     settings.currentServiceId = service.id
     saveSettings(settings)
   }
@@ -533,7 +591,10 @@ if (!app.requestSingleInstanceLock()) {
     textStyles.connectTextStyles(settings, () => svc.refreshTextStyles())
     audio.connectAudio(settings, {
       videoPlaying: svc.videoPlaying,
-      onChange: () => controlWindow?.webContents.send('audio:changed', audio.audioState()),
+      onChange: () => {
+        controlWindow?.webContents.send('audio:changed', audio.audioState())
+        remote.remoteStateChanged()
+      },
       onItemEnded: svc.audioItemEnded
     })
     stage.connectStage(settings, () => {
@@ -559,6 +620,12 @@ if (!app.requestSingleInstanceLock()) {
     if (settings.sharedFolder) shared.setSharedFolder(settings.sharedFolder)
     createControlWindow()
     syncOutputs()
+    remote.connectRemote(settings, {
+      state: () => remote.buildRemoteState(svc.serviceState(), audio.audioState(), svc.findItem, svc.isReady),
+      run: runRemoteCommand,
+      onStatus: (status) => controlWindow?.webContents.send('remote:changed', status)
+    })
+    connectUpdater((status) => controlWindow?.webContents.send('update:changed', status))
   })
 
   app.on('before-quit', () => {
@@ -566,6 +633,7 @@ if (!app.requestSingleInstanceLock()) {
     closePdfWindow()
     audio.closeAudioWindow()
     shared.stopShared()
+    remote.stopRemote()
     svc.flushSave()
   })
 

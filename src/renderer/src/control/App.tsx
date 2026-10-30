@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { strings } from '../strings'
-import { useScreensState, useServiceState } from './hooks'
+import { useScreensState, useServiceState, useUpdateStatus } from './hooks'
 import { hasConnectedOutput } from './ScreensColumn'
 import { ServiceClock } from './ServiceBar'
 import { ScreensPage } from './ScreensPage'
@@ -14,6 +14,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('service')
   const state = useServiceState()
   const [screens] = useScreensState()
+  const update = useUpdateStatus()
   const overlays = state?.overlays
 
   return (
@@ -27,13 +28,30 @@ export function App() {
             {strings.tabScreens}
           </button>
         </nav>
-        <span className="app-name">{strings.appName}</span>
+        <span className="app-name" title={update ? strings.versionLabel(update.current) : undefined}>
+          {strings.appName}
+        </span>
         <div className="topbar-actions">
           {state && <ServiceClock state={state} />}
           {screens && !hasConnectedOutput(screens) && (
             <button className="no-outputs-chip" onClick={() => setTab('screens')}>
               <span className="dot dot-warn" />
               {strings.noScreensChip}
+            </button>
+          )}
+          {update?.available && !update.ready && update.percent !== null && (
+            <span className="update-chip">{strings.updateDownloading(update.available, update.percent)}</span>
+          )}
+          {update?.ready && update.available && (
+            <button
+              className="update-chip is-ready"
+              title={strings.updateReadyHint}
+              onClick={() => {
+                if (window.confirm(strings.updateConfirm(update.available ?? ''))) void api.installUpdate()
+              }}
+            >
+              <span className="dot dot-ok" />
+              {strings.updateReady(update.available)}
             </button>
           )}
           {overlays && (

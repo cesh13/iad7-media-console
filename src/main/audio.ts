@@ -25,7 +25,7 @@ let musicTake = 0
 let fadeOutId = 0
 let fadeTimer: NodeJS.Timeout | null = null
 let position: AudioState['position'] = null
-let item: (AudioState['item'] & { url: string; take: number }) | null = null
+let item: (NonNullable<AudioState['item']> & { url: string; take: number; seekTo?: number; seekId?: number }) | null = null
 let itemTake = 0
 let ducked = false
 /** Latest level of each player (audio window, output windows), with the time it came. */
@@ -108,7 +108,9 @@ function render(): void {
     music: track?.url
       ? { url: track.url, take: musicTake, playing, volume: a.musicVolume * (ducked ? duckLevel : 1), fadeOutId: fadeOutId || undefined }
       : null,
-    item: item ? { url: item.url, take: item.take, playing: item.playing, volume: a.itemsVolume } : null
+    item: item
+      ? { url: item.url, take: item.take, playing: item.playing, volume: a.itemsVolume * item.volume, seekTo: item.seekTo, seekId: item.seekId }
+      : null
   }
   if (win && !win.isDestroyed()) win.webContents.send('audio:render', r)
   changed()
@@ -129,7 +131,9 @@ export function audioState(): AudioState {
     playing,
     ducked,
     position,
-    item: item ? { itemId: item.itemId, title: item.title, playing: item.playing, time: item.time, duration: item.duration } : null,
+    item: item
+      ? { itemId: item.itemId, title: item.title, playing: item.playing, time: item.time, duration: item.duration, volume: item.volume }
+      : null,
     levels: { l, r }
   }
 }
@@ -253,8 +257,21 @@ export function orderEnded(): void {
 
 // ---- Audio items from the order ----
 
-export function playItem(itemId: string, title: string, url: string): void {
-  item = { itemId, title, url, take: ++itemTake, playing: true, time: 0, duration: 0 }
+export function playItem(itemId: string, title: string, url: string, volume: number): void {
+  item = { itemId, title, url, take: ++itemTake, playing: true, time: 0, duration: 0, volume }
+  render()
+}
+
+/** Pause, play, seek or change the volume of the audio item (from the live bar). */
+export function controlItem(change: { playing?: boolean; seekTo?: number; volume?: number }): void {
+  if (!item) return
+  if (change.playing !== undefined) item.playing = change.playing
+  if (change.volume !== undefined) item.volume = Math.max(0, Math.min(1, change.volume))
+  if (change.seekTo !== undefined) {
+    item.seekTo = Math.max(0, change.seekTo)
+    item.seekId = (item.seekId ?? 0) + 1
+    item.time = item.seekTo
+  }
   render()
 }
 

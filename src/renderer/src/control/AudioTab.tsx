@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AudioState } from '../../../shared/types'
 import { formatTime, strings } from '../strings'
+import { MediaButton } from './MediaIcons'
 
 const api = window.mediaConsole
 
@@ -39,14 +40,12 @@ export function MusicStrip() {
   const track = a.playlist[state.index]
   return (
     <div className="music-strip">
-      <button
-        className="btn btn-small"
+      <MediaButton
+        icon={state.playing ? 'pause' : 'play'}
+        label={state.playing ? strings.pause : strings.play}
         disabled={!a.playlist.length}
-        title={state.playing ? strings.pause : strings.play}
         onClick={() => void (state.playing ? api.musicPause() : api.musicPlay())}
-      >
-        {state.playing ? '❚❚' : '▶'}
-      </button>
+      />
       <span className={track ? 'music-strip-name' : 'music-strip-name dim'}>
         {track ? track.path.split(/[\\/]/).pop() : strings.noMusic}
       </span>
@@ -109,19 +108,14 @@ export function AudioTab() {
             <span className="mono small dim">{formatTime(state.position?.duration || undefined)}</span>
           </div>
           <div className="button-row tight">
-            <button className="btn btn-small" disabled={!a.playlist.length} onClick={() => void api.musicPrevious()}>
-              ⏮
-            </button>
-            <button
-              className="btn btn-small"
+            <MediaButton icon="prevTrack" label={strings.previousTrack} disabled={!a.playlist.length} onClick={() => void api.musicPrevious()} />
+            <MediaButton
+              icon={state.playing ? 'pause' : 'play'}
+              label={state.playing ? strings.pause : strings.play}
               disabled={!a.playlist.length}
               onClick={() => void (state.playing ? api.musicPause() : api.musicPlay())}
-            >
-              {state.playing ? strings.pause : strings.play}
-            </button>
-            <button className="btn btn-small" disabled={!a.playlist.length} onClick={() => void api.musicNext()}>
-              ⏭
-            </button>
+            />
+            <MediaButton icon="nextTrack" label={strings.nextTrack} disabled={!a.playlist.length} onClick={() => void api.musicNext()} />
             <button className="btn btn-small" disabled={!state.playing} onClick={() => void api.musicFadeOut()}>
               {strings.fadeOut3}
             </button>

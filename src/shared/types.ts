@@ -53,6 +53,8 @@ export interface GroupConfig {
    * messages for the people on the platform, with a copy of what the audience sees.
    */
   stageView?: boolean
+  /** Stage view only: show the program of the service (now, time left, next). Default on. */
+  showProgram?: boolean
 }
 
 /** A lower-third message the team saved (name and role, notices). */
@@ -76,7 +78,93 @@ export interface Settings {
   favorites?: Favorite[]
   /** How Bible text and song text look on the screens. */
   textStyles?: TextStyles
+  /** The program that new services start with. */
+  programTemplate?: ProgramPart[]
+  remote?: RemoteSettings
 }
+
+// ---- Remote control (SPEC section 11) ----
+
+export interface RemoteSettings {
+  enabled: boolean
+  port: number
+  /** 4 to 8 digits. */
+  pin: string
+}
+
+/** What the Screens page shows about the remote control. */
+export interface RemoteStatus extends RemoteSettings {
+  /** Addresses to open on the remote device, for example http://192.168.1.20:5050. */
+  addresses: string[]
+  /** Remotes connected now. */
+  clients: number
+  /** For example: the port is in use. */
+  error: string | null
+}
+
+/** Updates over the internet (SPEC 12). */
+export interface UpdateStatus {
+  /** The version that runs now, for example 1.2.0. */
+  current: string
+  /** A newer version that is downloading or downloaded. */
+  available: string | null
+  /** Download progress 0–100, while it downloads. */
+  percent: number | null
+  /** Downloaded: it installs when the app closes. */
+  ready: boolean
+}
+
+/** One group, as the remote page shows it. */
+export interface RemoteGroup {
+  id: string
+  name: string
+  content: {
+    itemId: string
+    title: string
+    type: ItemType
+    take: number
+    playing: boolean
+    /** Slides: page now (0 = first) and the number of pages. */
+    page?: number
+    pageCount?: number
+    /** A picture of what shows (image, or slide page), as a /media/… URL. */
+    pictureUrl?: string
+  } | null
+  text: { title: string; index: number; count: number } | null
+}
+
+/** Everything the remote page shows (a small part of the service state). */
+export interface RemoteState {
+  serviceName: string
+  items: { id: string; title: string; type: ItemType; status: ItemStatus; ready: boolean }[]
+  nextItemId: string | null
+  target: Target
+  groups: RemoteGroup[]
+  /** By take, for the video time. */
+  playback: Record<number, { time: number; duration: number; playing: boolean }>
+  overlays: Overlays
+  hasLogo: boolean
+  music: { title: string | null; playing: boolean; hasPlaylist: boolean }
+  audioItem: { title: string; playing: boolean } | null
+}
+
+/** The commands a remote may send. Nothing else is accepted. */
+export type RemoteCommand =
+  | { name: 'next' }
+  | { name: 'previous' }
+  | { name: 'goLive'; itemId: string }
+  | { name: 'setTarget'; target: Target }
+  | { name: 'pageStep'; delta: 1 | -1 }
+  | { name: 'clear'; groupId?: string }
+  | { name: 'clearText' }
+  | { name: 'overlay'; overlay: keyof Overlays; on: boolean }
+  | { name: 'setPlaying'; take: number; playing: boolean }
+  | { name: 'seekBy'; take: number; seconds: number }
+  | { name: 'musicPlay' }
+  | { name: 'musicPause' }
+  | { name: 'musicNext' }
+  | { name: 'musicFadeOut' }
+  | { name: 'audioItemPlaying'; playing: boolean }
 
 // ---- Text styles (Bible, songs) ----
 
@@ -185,6 +273,8 @@ export interface StageRender {
   next: { title: string } | null
   /** What the audience sees now (the main group). */
   mirror: { content: ContentLayer | null; text: TextLayer | null; idle: OutputRender['idle'] }
+  /** The program of the service, when this group shows it. The screen works out now and next from the clock. */
+  program?: ProgramPart[]
 }
 
 // ---- Audio (SPEC 5.6) ----
@@ -214,7 +304,7 @@ export interface AudioState {
   ducked: boolean
   position: { time: number; duration: number } | null
   /** An audio item from the order that plays now. */
-  item: { itemId: string; title: string; playing: boolean; time: number; duration: number } | null
+  item: { itemId: string; title: string; playing: boolean; time: number; duration: number; volume: number } | null
   /** Output level, 0..1 for left and right. */
   levels: { l: number; r: number }
 }
@@ -223,7 +313,7 @@ export interface AudioState {
 export interface AudioRender {
   device: string
   music: { url: string; take: number; playing: boolean; volume: number; fadeOutId?: number } | null
-  item: { url: string; take: number; playing: boolean; volume: number } | null
+  item: { url: string; take: number; playing: boolean; volume: number; seekTo?: number; seekId?: number } | null
 }
 
 /** A saved output, and the screen it matches now (if any). */
@@ -475,6 +565,17 @@ export interface Service {
   bibleHistory?: BibleRef[]
   /** When the first item went live (ms), for the elapsed time in the top bar. */
   startedAt?: number
+  /** The parts of the service by clock time, for the Stage screen. */
+  program?: ProgramPart[]
+}
+
+/** One part of the service program, for example 9:10 Prayer (Elder). It ends when the next part starts. */
+export interface ProgramPart {
+  id: string
+  /** Start time "HH:MM" (24 hours). */
+  start: string
+  title: string
+  who?: string
 }
 
 // ---- Live state ----
@@ -568,6 +669,7 @@ export interface ServiceState {
   stageTimer: StageTimer
   stageMessage: string | null
   messages: SavedMessage[]
+  programTemplate: ProgramPart[]
   services: ServiceSummary[]
   library: LibraryFolder[]
   favorites: Favorite[]
@@ -613,7 +715,7 @@ export interface MediaConsoleApi {
   onTestInfo(callback: (info: TestInfo) => void): () => void
   addGroup(name: string): Promise<void>
   removeGroup(groupId: string): Promise<void>
-  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView'>>): Promise<void>
+  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView' | 'showProgram'>>): Promise<void>
   /** Put an output in a group (null: no group). An output is in one group at most. */
   assignOutput(outputId: string, groupId: string | null): Promise<void>
   /** Show a file dialog and set the group's idle files. */
@@ -637,6 +739,8 @@ export interface MediaConsoleApi {
   /** Path of a dropped File (Electron no longer gives File.path). */
   pathForFile(file: File): string
   removeItem(itemId: string): Promise<void>
+  /** Mark all done items as not done. */
+  resetProgress(): Promise<void>
   retryCopy(itemId: string): Promise<void>
   /** The control window reads video length from the file and reports it. */
   setDuration(itemId: string, seconds: number): Promise<void>
@@ -693,6 +797,12 @@ export interface MediaConsoleApi {
   newService(): Promise<void>
   openService(serviceId: string): Promise<void>
   renameService(name: string): Promise<void>
+  /** Replace the program of this service. */
+  setProgram(parts: ProgramPart[]): Promise<void>
+  /** Save this service's program as the template for new services. */
+  saveProgramTemplate(): Promise<void>
+  /** Replace this service's program with the template. */
+  useProgramTemplate(): Promise<void>
   /** The items of another service (to look at before copying). */
   serviceItems(serviceId: string): Promise<ServiceItem[]>
   /** Copy the order of a past service to the end of this service. */
@@ -763,6 +873,20 @@ export interface MediaConsoleApi {
   musicFadeOut(): Promise<void>
   /** Stop the audio item ("Audio ✕"). */
   stopItemAudio(): Promise<void>
+  /** Pause, play, seek or change the volume of the audio item that plays now. */
+  controlItemAudio(change: { playing?: boolean; seekTo?: number; volume?: number }): Promise<void>
+
+  // Remote control
+  getRemote(): Promise<RemoteStatus>
+  onRemoteChanged(callback: (status: RemoteStatus) => void): () => void
+  /** Turn the remote on or off, or change the PIN or the port. */
+  updateRemote(change: Partial<RemoteSettings>): Promise<RemoteStatus>
+
+  // Updates
+  getUpdate(): Promise<UpdateStatus>
+  onUpdateChanged(callback: (status: UpdateStatus) => void): () => void
+  /** Close the app now and install the downloaded version. */
+  installUpdate(): Promise<void>
 
   // Hidden audio window
   onAudioRender(callback: (render: AudioRender) => void): () => void

@@ -29,6 +29,7 @@ export function useBible(bibles: ServiceState['bibles']) {
   const [hits, setHits] = useState<{ list: BibleHit[]; more: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!version && bibles[0]) setVersionId(bibles[0].id)
@@ -141,6 +142,7 @@ export function useBible(bibles: ServiceState['bibles']) {
     error,
     setError,
     searchRef,
+    listRef,
     ref,
     chapterCount,
     verseCount,
@@ -226,7 +228,13 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
           value={bible.query}
           placeholder={strings.bibleSearchPlaceholder}
           onChange={(e) => bible.setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void bible.runSearch(bible.query)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void bible.runSearch(bible.query)
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              bible.listRef.current?.focus()
+            }
+          }}
         />
         <select className="input select" value={version?.id} onChange={(e) => bible.setVersionId(e.target.value)}>
           {bible.bibles.map((b) => (
@@ -272,7 +280,7 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
         <div className="bible-today">
           <span className="label-inline">{strings.today}</span>
           {state.bibleHistory.slice(0, 6).map((r) => {
-            const isLive = liveText?.ref && refLabel(liveText.ref) === refLabel(r)
+            const isLive = liveText?.ref && liveText.title === refLabel(r)
             return (
               <button key={refLabel(r)} className={isLive ? 'chip chip-live' : 'chip'} onClick={() => bible.goTo(r)}>
                 {refLabel(r)}
@@ -313,16 +321,24 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
   const liveText = liveTextOf(state)
   const liveHere = liveText?.ref && liveText.ref.book === book && liveText.ref.chapter === chapter ? liveText : null
   const liveVerse = liveHere?.screens[liveHere.index]?.verse
-  const nextVerse = liveHere?.screens.slice(liveHere.index + 1).find((s) => s.verse !== liveVerse)?.verse
 
-  /** ↑ ↓ in the verse list: move verse by verse; if this passage is live, the screen follows. */
+  /**
+   * ↑ ↓ in the verse list. While this passage is live: the next or previous
+   * screen, from the verse that is live. Otherwise: move the selection verse by verse.
+   */
   const onListKey = (e: KeyboardEvent) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
-    const v = Math.max(1, Math.min(bible.verseCount, sel.from + (e.key === 'ArrowDown' ? 1 : -1)))
+    const delta = e.key === 'ArrowDown' ? 1 : -1
+    if (liveHere) return void api.pageStep(delta)
+    const v = Math.max(1, Math.min(bible.verseCount, sel.from + delta))
     bible.setSel({ from: v, to: v })
-    if (liveHere) void api.showVerse(v)
   }
+
+  // Keep the live verse in view while it moves.
+  useEffect(() => {
+    bible.listRef.current?.querySelector('.verse-row.is-live')?.scrollIntoView({ block: 'nearest' })
+  }, [liveVerse])
 
   return (
     <section className="panel bible-main">
@@ -346,12 +362,21 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
         <button className="btn" disabled={!ref} onClick={() => ref && void api.addBibleToOrder(ref)}>
           {strings.addToOrder}
         </button>
-        <button className="btn btn-live" disabled={!ref} onClick={() => ref && void api.showBibleNow(ref)}>
+        <button
+          className="btn btn-live"
+          disabled={!ref}
+          onClick={() => {
+            if (!ref) return
+            void api.showBibleNow(ref)
+            // The arrow keys work on the verse list right away.
+            bible.listRef.current?.focus()
+          }}
+        >
           {strings.showNow}
         </button>
       </div>
 
-      <div className="verse-list" tabIndex={0} data-own-keys onKeyDown={onListKey}>
+      <div className="verse-list" ref={bible.listRef} tabIndex={0} data-own-keys onKeyDown={onListKey}>
         {hits ? (
           <>
             <span className="label-inline">{strings.searchResults(hits.list.length, hits.more)}</span>
@@ -376,7 +401,6 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
               const n = i + 1
               const cls = ['verse-row']
               if (n === liveVerse) cls.push('is-live')
-              else if (n === nextVerse) cls.push('is-next')
               else if (n >= sel.from && n <= sel.to) cls.push('is-selected')
               return (
                 <button
@@ -390,7 +414,6 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
                   </span>
                   <span className="verse-line">{text}</span>
                   {n === liveVerse && <span className="tag tag-live">{strings.badgeLive}</span>}
-                  {n === nextVerse && <span className="tag tag-next">{strings.badgeNext}</span>}
                 </button>
               )
             })}

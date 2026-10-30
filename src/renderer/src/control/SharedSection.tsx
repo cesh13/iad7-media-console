@@ -93,7 +93,7 @@ export function SharedSection({ state }: { state: ServiceState }) {
             <span className="chevron">{open.has(e.rel) ? '▾' : '▸'}</span>
             <TypeIcon type="folder" />
             <span className="shared-name">
-              {e.name}/
+              <span className="shared-title">{e.name}/</span>
               <span className={allReady ? 'shared-meta' : 'shared-meta warn'}>
                 {strings.sharedDirState(files.length, allReady)}
               </span>
@@ -121,22 +121,28 @@ export function SharedSection({ state }: { state: ServiceState }) {
     <div className="shared">
       <div className="shared-head">
         <span className="label">{strings.sharedLabel}</span>
-        {newCount > 0 && <span className="badge-new">{strings.newCount(newCount)}</span>}
         <span className={`shared-status ${statusLook[shared.status].css}`} title={shared.error}>
           <span className={`dot ${statusLook[shared.status].dot}`} />
           {statusLook[shared.status].label}
         </span>
         <div className="spacer" />
-        {newCount > 0 && (
-          <button className="btn btn-small btn-quiet" onClick={() => void api.markSharedSeen()}>
-            {strings.markSeen}
-          </button>
-        )}
         <button className="btn btn-small btn-quiet" title={strings.changeFolderHint} onClick={() => void api.pickSharedFolder()}>
           {strings.changeFolder}
         </button>
       </div>
-      <div className="mono dim small shared-root">{shared.root}</div>
+      <div className="mono dim small shared-root" title={shared.root ?? undefined}>
+        {shared.root}
+      </div>
+      {/* A second row, so the header fits in the narrow column. */}
+      {newCount > 0 && (
+        <div className="shared-head">
+          <span className="badge-new">{strings.newCount(newCount)}</span>
+          <div className="spacer" />
+          <button className="btn btn-small btn-quiet" onClick={() => void api.markSharedSeen()}>
+            {strings.markSeen}
+          </button>
+        </div>
+      )}
       <div className="shared-list">
         {shared.entries.length === 0 && <p className="dim small">{emptyText[shared.status]}</p>}
         {renderList('', 0)}
@@ -151,8 +157,8 @@ function SharedFile({ entry: e, depth, inOrder }: { entry: SharedEntry; depth: n
     <div className="shared-row" style={{ paddingLeft: 20 + depth * 14 }} onDoubleClick={add} title={e.error}>
       <span className={e.isNew ? 'dot dot-new' : 'dot dot-none'} />
       {e.type && <TypeIcon type={e.type} />}
-      <span className="shared-name">
-        {e.name}
+      <span className="shared-name" title={e.error ?? e.name}>
+        <span className="shared-title">{e.name}</span>
         <span className={e.state === 'error' ? 'shared-meta text-live' : 'shared-meta'}>{fileMeta(e, inOrder)}</span>
       </span>
       <button className="btn btn-small" title={strings.addToOrder} onClick={add}>

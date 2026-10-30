@@ -3,7 +3,7 @@ import { formatTime, strings } from '../strings'
 import { ScreenView } from '../view/ScreenView'
 import { StageView } from '../view/StageView'
 import { useAudioState } from './AudioTab'
-import { TypeIcon } from './OrderPanel'
+import { iconFor, TypeIcon } from './OrderPanel'
 
 const api = window.mediaConsole
 
@@ -147,7 +147,7 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
       {content && item ? (
         <div className="group-now">
           <span className="tag tag-live">{strings.badgeLive}</span>
-          <TypeIcon type={item.type} />
+          <TypeIcon type={iconFor(item)} />
           <span className="row-title">{item.title}</span>
           {item.type === 'video' && <span className="mono dim">{formatTime(playback?.currentTime)}</span>}
         </div>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { GroupConfig, SavedMessage, Settings, StageRender, StageTimer } from '../shared/types'
+import type { GroupConfig, ProgramPart, SavedMessage, Settings, StageRender, StageTimer } from '../shared/types'
 import { saveSettings } from './settings'
 import * as svc from './service'
 
@@ -76,6 +76,24 @@ export function deleteMessage(id: string): void {
   notify()
 }
 
+// ---- Program template ----
+
+export function programTemplate(): ProgramPart[] {
+  return settings.programTemplate ?? []
+}
+
+/** Save the program of this service as the template for new services. */
+export function saveProgramTemplate(): void {
+  settings.programTemplate = svc.program().map((p) => ({ ...p }))
+  saveSettings(settings)
+  notify()
+}
+
+/** Replace the program of this service with a copy of the template. */
+export function useProgramTemplate(): void {
+  svc.setProgram(programTemplate().map((p) => ({ ...p, id: randomUUID() })))
+}
+
 // ---- What a stage screen shows ----
 
 /**
@@ -97,6 +115,7 @@ export function stageRender(group: GroupConfig, groups: GroupConfig[]): StageRen
     message,
     now: info.now,
     next: info.next,
+    program: group.showProgram !== false && svc.program().length ? svc.program() : undefined,
     mirror: {
       content: mirrorLive.content,
       text: mirrorLive.text,

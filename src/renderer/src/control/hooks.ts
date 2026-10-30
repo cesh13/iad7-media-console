@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ScreensState, ServiceState } from '../../../shared/types'
+import type { ScreensState, ServiceState, UpdateStatus } from '../../../shared/types'
 
 const api = window.mediaConsole
 
@@ -21,4 +21,14 @@ export function useScreensState(): [ScreensState | null, (s: ScreensState) => vo
     return api.onScreensChanged(setState)
   }, [])
   return [state, setState]
+}
+
+/** Update status from the main process, kept up to date. */
+export function useUpdateStatus(): UpdateStatus | null {
+  const [status, setStatus] = useState<UpdateStatus | null>(null)
+  useEffect(() => {
+    void api.getUpdate().then(setStatus)
+    return api.onUpdateChanged(setStatus)
+  }, [])
+  return status
 }

@@ -30,6 +30,27 @@ const mimeTypes: Record<string, string> = {
 /** The app pages (file:// or the dev server) may read these files, also for the level meter. */
 const cors = { 'Access-Control-Allow-Origin': '*' }
 
+export function mimeType(file: string): string {
+  return mimeTypes[extname(file).toLowerCase()] ?? 'application/octet-stream'
+}
+
+/**
+ * The file for a path in the media cache ("/abc/page-1.png"), or null.
+ * Only files inside the cache folder: no "..", no other folders.
+ */
+export function cacheFile(pathname: string): string | null {
+  const root = cacheDir()
+  let file: string
+  try {
+    file = resolve(root, ...pathname.split('/').filter(Boolean).map(decodeURIComponent))
+  } catch {
+    return null // A bad %-escape in the path.
+  }
+  const inside = relative(root, file)
+  if (!inside || inside.startsWith('..') || !existsSync(file) || !statSync(file).isFile()) return null
+  return file
+}
+
 /** Must run before the app is ready. */
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -46,15 +67,10 @@ export function registerMediaScheme(): void {
 export function handleMediaScheme(): void {
   protocol.handle('media', (request) => {
     const url = new URL(request.url)
-    const root = cacheDir()
-    const file = resolve(root, ...url.pathname.split('/').filter(Boolean).map(decodeURIComponent))
-    // Only files inside the cache folder: no "..", no other folders.
-    const inside = relative(root, file)
-    if (url.hostname !== 'cache' || !inside || inside.startsWith('..') || !existsSync(file)) {
-      return new Response('Not found', { status: 404 })
-    }
+    const file = url.hostname === 'cache' ? cacheFile(url.pathname) : null
+    if (!file) return new Response('Not found', { status: 404 })
     const size = statSync(file).size
-    const type = mimeTypes[extname(file).toLowerCase()] ?? 'application/octet-stream'
+    const type = mimeType(file)
     const range = /bytes=(\d*)-(\d*)/.exec(request.headers.get('range') ?? '')
 
     if (!range) {
