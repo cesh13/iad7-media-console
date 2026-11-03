@@ -1,5 +1,13 @@
 # Changes
 
+## 1.1.0 – 2026-11-03
+
+- Bible verses now cover the live slide or video instead of removing it. A video keeps playing under the verse. Press Esc once to remove the verse and show the slide again. You can turn this off in the Bible options.
+- New Bible option "Back to Order after verse": when a verse leaves the screens, the Order tab opens with the live item selected. It is off by default.
+- The left tabs are now Order, Bible and Library. Press Ctrl+1, Ctrl+2 or Ctrl+3 to open them.
+- Shared folder: click its title to close or open it. Drag its top edge to change its height. Double-click the edge to go back to the normal size.
+- The app has its own icon: a gold play button with a cross.
+
 ## 1.0.0 – 2026-10-29
 
 - Service order with videos, pictures, PDF slides, PowerPoint files, songs and typed text. Preview, then "Go live".
