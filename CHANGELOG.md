@@ -1,5 +1,11 @@
 # Changes
 
+## 1.2.0 – 2026-11-03
+
+- The shared folder is now called "Resource folder". It can be any folder, on this computer or on the network.
+- New "⋯" button on the Resource folder: "Change folder…" picks another folder, and "Clear" stops watching the folder. Items already in the order stay.
+- The Resource folder title row now fits in the column, also with a long status like "Too many files".
+
 ## 1.1.0 – 2026-11-03
 
 - Bible verses now cover the live slide or video instead of removing it. A video keeps playing under the verse. Press Esc once to remove the verse and show the slide again. You can turn this off in the Bible options.
