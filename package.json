@@ -8,6 +8,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
+    "icons": "electron scripts/make-icons.cjs",
     "dist": "electron-vite build && electron-builder --win",
     "release": "electron-vite build && electron-builder --win --publish always"
   },
@@ -47,6 +48,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"

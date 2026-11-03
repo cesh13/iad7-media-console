@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron'
 import { randomUUID } from 'node:crypto'
+import appIcon from '../../build/icon.png?asset'
 import type {
   BibleOptions,
   BibleRef,
@@ -188,6 +189,7 @@ function createControlWindow(): void {
     minHeight: 640,
     backgroundColor: '#101215',
     title: 'Media Console',
+    icon: appIcon,
     autoHideMenuBar: true,
     show: false,
     webPreferences: { preload: preloadPath(), sandbox: true }
