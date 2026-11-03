@@ -29,7 +29,7 @@ import { sortedParts } from '../shared/program'
 import { bibleDefaults, buildScreens, getChapter, listBibles } from './bible'
 import { mediaUrl } from './cache'
 import { refreshMedia } from './groups'
-import { shownStyle } from './textStyles'
+import { bibleOptions, shownStyle } from './textStyles'
 import { prepareFile } from './prepare'
 import { saveService } from './serviceStore'
 
@@ -204,7 +204,7 @@ function setStatus(itemId: string, status: ItemStatus): void {
 /** The service state without the stage and library parts (index.ts adds them). */
 export function serviceState(): Omit<
   ServiceState,
-  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'services' | 'library' | 'favorites' | 'textStyles'
+  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'services' | 'library' | 'favorites' | 'textStyles' | 'bibleOptions'
 > {
   refreshFolders()
   const next = nextIndex()
@@ -938,7 +938,10 @@ export function clearText(groupId?: string): void {
 
 // ---- Bible text ----
 
-/** Put text screens (Bible, song) on the text layer of these groups. Full screen also removes the content. */
+/**
+ * Put text screens (Bible, song) on the text layer of these groups. Full screen also removes
+ * the content, except a Bible passage with the "overlay" option: it covers the content and keeps it.
+ */
 function showText(
   groupIds: string[],
   itemId: string | null,
@@ -954,9 +957,10 @@ function showText(
   const t = ++take
   const index = startVerse ? Math.max(0, screens.findIndex((s) => s.verse >= startVerse)) : 0
   const text: TextLayer = { itemId, take: t, title, ref, screens, index, settings, style: textStyleOf(itemId) }
+  const keepContent = settings.mode === 'lower' || (!!ref && bibleOptions().overlay)
   for (const id of groupIds) {
     const g = groupLive(id)
-    live.set(id, { content: settings.mode === 'lower' ? g.content : null, text: { ...text } })
+    live.set(id, { content: keepContent ? g.content : null, text: { ...text } })
   }
   if (historyRef) remember(historyRef)
   updateStatuses(before, true)

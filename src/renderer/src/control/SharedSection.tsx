@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import type { ServiceState, SharedEntry, SharedState } from '../../../shared/types'
 import { strings } from '../strings'
 import { TypeIcon } from './OrderPanel'
@@ -27,47 +27,125 @@ const emptyText: Record<SharedState['status'], string> = {
   tooBig: strings.sharedTooBig
 }
 
+/** Smallest height the section can be dragged to, in pixels. */
+const minHeight = 90
+/** Space always left for the order list above the section, in pixels. */
+const orderSpace = 120
+
+/** Collapsed or not, and the dragged height, are kept on this computer only. */
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writePref(key: string, value: string | null): void {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
+  } catch {
+    // Not saved; the section still works.
+  }
+}
+
 export function SharedSection({ state }: { state: ServiceState }) {
   const [shared, setShared] = useState<SharedState | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [pathText, setPathText] = useState('')
+  const [collapsed, setCollapsed] = useState(() => readPref('shared.collapsed') === '1')
+  // null: the normal size (fits the content, at most half of the column).
+  const [height, setHeight] = useState<number | null>(() => Number(readPref('shared.height')) || null)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void api.getShared().then(setShared)
     return api.onSharedChanged(setShared)
   }, [])
 
+  useEffect(() => writePref('shared.collapsed', collapsed ? '1' : null), [collapsed])
+  useEffect(() => writePref('shared.height', height === null ? null : String(Math.round(height))), [height])
+
   if (!shared) return null
   const inOrder = new Set(state.service.items.flatMap((i) => [i.path, i.child?.path].filter(Boolean) as string[]))
   const newCount = shared.entries.filter((e) => e.isNew).length
 
+  /** Drag the top edge: up makes the section taller, down makes it shorter. */
+  const startResize = (ev: ReactPointerEvent<HTMLDivElement>) => {
+    const box = boxRef.current
+    if (!box || ev.button !== 0) return
+    ev.preventDefault()
+    const handle = ev.currentTarget
+    const startY = ev.clientY
+    const startHeight = box.getBoundingClientRect().height
+    const maxHeight = Math.max(minHeight, (box.parentElement?.clientHeight ?? 600) - orderSpace)
+    handle.setPointerCapture(ev.pointerId)
+    const move = (e: PointerEvent) => {
+      setHeight(Math.min(maxHeight, Math.max(minHeight, startHeight + startY - e.clientY)))
+    }
+    const stop = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', stop)
+      handle.removeEventListener('pointercancel', stop)
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', stop)
+    handle.addEventListener('pointercancel', stop)
+  }
+
+  const boxProps = {
+    ref: boxRef,
+    className: collapsed ? 'shared collapsed' : height !== null ? 'shared sized' : 'shared',
+    style: !collapsed && height !== null ? { height } : undefined
+  }
+
+  const resizeHandle = !collapsed && (
+    <div className="shared-resize" title={strings.resizeShared} onPointerDown={startResize} onDoubleClick={() => setHeight(null)} />
+  )
+
+  /** The title with the arrow; a click hides or shows the rest of the section. */
+  const title = (
+    <button
+      className="shared-toggle"
+      type="button"
+      title={collapsed ? strings.expandShared : strings.collapseShared}
+      onClick={() => setCollapsed(!collapsed)}
+    >
+      <span className="chevron">{collapsed ? '▸' : '▾'}</span>
+      <span className="label">{strings.sharedLabel}</span>
+    </button>
+  )
+
   if (!shared.root) {
     return (
-      <div className="shared">
-        <div className="shared-head">
-          <span className="label">{strings.sharedLabel}</span>
-        </div>
-        <p className="help small">{strings.sharedHelp}</p>
-        <form
-          className="button-row tight"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (pathText.trim()) void api.setSharedFolder(pathText.trim())
-          }}
-        >
-          <input
-            className="input shared-path-input"
-            value={pathText}
-            placeholder={strings.sharedPathPlaceholder}
-            onChange={(e) => setPathText(e.target.value)}
-          />
-          <button className="btn btn-small" type="submit">
-            {strings.watch}
-          </button>
-          <button className="btn btn-small btn-quiet" type="button" onClick={() => void api.pickSharedFolder()}>
-            {strings.chooseFolder}
-          </button>
-        </form>
+      <div {...boxProps}>
+        {resizeHandle}
+        <div className="shared-head">{title}</div>
+        {!collapsed && (
+          <>
+            <p className="help small">{strings.sharedHelp}</p>
+            <form
+              className="button-row tight"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (pathText.trim()) void api.setSharedFolder(pathText.trim())
+              }}
+            >
+              <input
+                className="input shared-path-input"
+                value={pathText}
+                placeholder={strings.sharedPathPlaceholder}
+                onChange={(e) => setPathText(e.target.value)}
+              />
+              <button className="btn btn-small" type="submit">
+                {strings.watch}
+              </button>
+              <button className="btn btn-small btn-quiet" type="button" onClick={() => void api.pickSharedFolder()}>
+                {strings.chooseFolder}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     )
   }
@@ -118,35 +196,44 @@ export function SharedSection({ state }: { state: ServiceState }) {
     })
 
   return (
-    <div className="shared">
+    <div {...boxProps}>
+      {resizeHandle}
       <div className="shared-head">
-        <span className="label">{strings.sharedLabel}</span>
+        {title}
         <span className={`shared-status ${statusLook[shared.status].css}`} title={shared.error}>
           <span className={`dot ${statusLook[shared.status].dot}`} />
           {statusLook[shared.status].label}
         </span>
         <div className="spacer" />
-        <button className="btn btn-small btn-quiet" title={strings.changeFolderHint} onClick={() => void api.pickSharedFolder()}>
-          {strings.changeFolder}
-        </button>
-      </div>
-      <div className="mono dim small shared-root" title={shared.root ?? undefined}>
-        {shared.root}
-      </div>
-      {/* A second row, so the header fits in the narrow column. */}
-      {newCount > 0 && (
-        <div className="shared-head">
-          <span className="badge-new">{strings.newCount(newCount)}</span>
-          <div className="spacer" />
-          <button className="btn btn-small btn-quiet" onClick={() => void api.markSharedSeen()}>
-            {strings.markSeen}
+        {/* When the list is hidden, still show that new files came in. */}
+        {collapsed && newCount > 0 && <span className="badge-new">{strings.newCount(newCount)}</span>}
+        {!collapsed && (
+          <button className="btn btn-small btn-quiet" title={strings.changeFolderHint} onClick={() => void api.pickSharedFolder()}>
+            {strings.changeFolder}
           </button>
-        </div>
-      )}
-      <div className="shared-list">
-        {shared.entries.length === 0 && <p className="dim small">{emptyText[shared.status]}</p>}
-        {renderList('', 0)}
+        )}
       </div>
+      {!collapsed && (
+        <>
+          <div className="mono dim small shared-root" title={shared.root ?? undefined}>
+            {shared.root}
+          </div>
+          {/* A second row, so the header fits in the narrow column. */}
+          {newCount > 0 && (
+            <div className="shared-head">
+              <span className="badge-new">{strings.newCount(newCount)}</span>
+              <div className="spacer" />
+              <button className="btn btn-small btn-quiet" onClick={() => void api.markSharedSeen()}>
+                {strings.markSeen}
+              </button>
+            </div>
+          )}
+          <div className="shared-list">
+            {shared.entries.length === 0 && <p className="dim small">{emptyText[shared.status]}</p>}
+            {renderList('', 0)}
+          </div>
+        </>
+      )}
     </div>
   )
 }

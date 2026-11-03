@@ -34,9 +34,22 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
   const selected = items.find((i) => i.id === selectedId) ?? null
   const blackOn = !!state?.overlays.black
   const textLive = !!state?.groups.some((g) => g.live.text)
+  const verseLive = !!state?.groups.some((g) => g.live.text?.ref)
+
+  // "Back to Order" option: when a verse leaves the screens, show the Order tab with the live item selected.
+  const verseWasLive = useRef(false)
+  useEffect(() => {
+    const was = verseWasLive.current
+    verseWasLive.current = verseLive
+    if (!was || verseLive || !state?.bibleOptions.backToOrder) return
+    setLeftTab('order')
+    const liveItem = items.find((i) => i.status === 'live')
+    if (liveItem) setSelectedId(liveItem.id)
+  }, [verseLive])
 
   // Esc must be pressed twice to clear everything. One stray Esc (for example
   // from the slideshow button of a presenter clicker) must not blank the screens.
+  // One Esc only removes a Bible verse, so the slide or video under it shows again.
   const escAt = useRef(0)
   const [escArmed, setEscArmed] = useState(false)
   useEffect(() => {
@@ -61,6 +74,12 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
         e.preventDefault()
         setLeftTab('bible')
         setBibleFocus((n) => n + 1)
+        return
+      }
+      // Ctrl+1 / Ctrl+2 / Ctrl+3: Order, Bible, Library tabs (works from any input too).
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && /^[1-3]$/.test(e.key)) {
+        e.preventDefault()
+        setLeftTab((['order', 'bible', 'library'] as const)[Number(e.key) - 1])
         return
       }
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
@@ -92,6 +111,7 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
         } else {
           escAt.current = now
           setEscArmed(true)
+          if (verseLive) void api.clearText()
         }
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'PageDown' || e.key === 'PageUp') {
         e.preventDefault()
@@ -130,7 +150,7 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [items, selectedId, blackOn, leftTab, textLive, bible.ref])
+  }, [items, selectedId, blackOn, leftTab, textLive, verseLive, bible.ref])
 
   if (!state) return null
 
@@ -165,9 +185,7 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
               }}
             >
               {strings.orderLabel}
-            </button>
-            <button className={leftTab === 'library' ? 'tab is-active' : 'tab'} onClick={() => setLeftTab('library')}>
-              {strings.libraryLabel}
+              <span className="tab-key">{strings.leftTabKeys[0]}</span>
             </button>
             <button
               className={leftTab === 'bible' ? 'tab is-active' : 'tab'}
@@ -175,6 +193,15 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
               onClick={() => setLeftTab('bible')}
             >
               {strings.bibleLabel}
+              <span className="tab-key">{strings.leftTabKeys[1]}</span>
+            </button>
+            <button
+              className={leftTab === 'library' ? 'tab is-active' : 'tab'}
+              title={strings.libraryTabHint}
+              onClick={() => setLeftTab('library')}
+            >
+              {strings.libraryLabel}
+              <span className="tab-key">{strings.leftTabKeys[2]}</span>
             </button>
           </nav>
           {leftTab === 'order' && <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />}

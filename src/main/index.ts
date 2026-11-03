@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type {
+  BibleOptions,
   BibleRef,
   GroupConfig,
   ItemSettings,
@@ -111,7 +112,8 @@ function serviceStateFull(): ServiceState {
     services: listServices(),
     library: library.libraryFolders(),
     favorites: library.favorites(),
-    textStyles: textStyles.textStyles()
+    textStyles: textStyles.textStyles(),
+    bibleOptions: textStyles.bibleOptions()
   }
 }
 
@@ -390,6 +392,7 @@ function registerIpc(): void {
     if (path) textStyles.setTextBackground(kind, path)
   })
   ipcMain.handle('textStyles:reset', (_e, kind: TextStyleKind) => textStyles.resetTextStyle(kind))
+  ipcMain.handle('bible:setOptions', (_e, change: Partial<BibleOptions>) => textStyles.setBibleOptions(change))
 
   // ---- Shared folder ----
   ipcMain.handle('shared:get', () => shared.sharedState())

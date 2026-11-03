@@ -60,6 +60,7 @@ const api: MediaConsoleApi = {
   setTextStyle: (kind, change) => invoke('textStyles:set', kind, change),
   pickTextBackground: (kind) => invoke('textStyles:pickBackground', kind),
   resetTextStyle: (kind) => invoke('textStyles:reset', kind),
+  setBibleOptions: (change) => invoke('bible:setOptions', change),
 
   // Services
   newService: () => invoke('services:new'),

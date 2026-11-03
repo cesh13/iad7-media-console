@@ -301,6 +301,24 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
           {strings.importShort}
         </button>
       </div>
+      <div className="bible-options">
+        <label className="check" title={strings.bibleOverlayHint}>
+          <input
+            type="checkbox"
+            checked={state.bibleOptions.overlay}
+            onChange={(e) => void api.setBibleOptions({ overlay: e.target.checked })}
+          />
+          {strings.bibleOverlay}
+        </label>
+        <label className="check" title={strings.bibleBackToOrderHint}>
+          <input
+            type="checkbox"
+            checked={state.bibleOptions.backToOrder}
+            onChange={(e) => void api.setBibleOptions({ backToOrder: e.target.checked })}
+          />
+          {strings.bibleBackToOrder}
+        </label>
+      </div>
       {dialogs}
     </div>
   )

@@ -1,4 +1,4 @@
-import type { ItemSettings, Settings, ShownTextStyle, TextStyle, TextStyleKind, TextStyles } from '../shared/types'
+import type { BibleOptions, ItemSettings, Settings, ShownTextStyle, TextStyle, TextStyleKind, TextStyles } from '../shared/types'
 import { shownStyle as shared } from '../shared/textStyle'
 import { mediaRef, refreshMedia } from './groups'
 import { saveSettings } from './settings'
@@ -35,10 +35,21 @@ export function connectTextStyles(s: Settings, onChange: () => void): void {
     song: { ...defaultTextStyle('song'), ...saved?.song }
   }
   for (const style of Object.values(settings.textStyles)) if (style.backgroundMedia) refreshMedia(style.backgroundMedia)
+  settings.bibleOptions = { overlay: true, backToOrder: false, ...settings.bibleOptions }
 }
 
 export function textStyles(): TextStyles {
   return settings.textStyles!
+}
+
+/** Bible options. Before the settings are loaded: the defaults. */
+export function bibleOptions(): BibleOptions {
+  return settings?.bibleOptions ?? { overlay: true, backToOrder: false }
+}
+
+export function setBibleOptions(change: Partial<BibleOptions>): void {
+  settings.bibleOptions = { ...bibleOptions(), ...change }
+  changed()
 }
 
 function changed(): void {

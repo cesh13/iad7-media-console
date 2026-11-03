@@ -109,7 +109,9 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   time, the "No output screen" chip when it applies, and the buttons.
 - Buttons: **Logo**, **Clear text**, **Black screen (all)**.
 
-### 5.2 Left panel: Order / Library / Bible tabs
+### 5.2 Left panel: Order / Bible / Library tabs
+- Tab order: Order, Bible, Library. **Ctrl+1**, **Ctrl+2**, **Ctrl+3** open them
+  (from anywhere, also from an input). Each tab shows its key next to its name.
 
 **Order tab**
 - Items grouped by section. Each row: status, type icon, title, length or count.
@@ -175,8 +177,8 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Keys: ← → slides or verses (in the Bible tab also ↓ ↑ while text is live), Space next item, Esc twice (within 1.5 s) clear all.
   Presenter clickers: Page Down / Page Up = next / previous slide, B or . =
   black screen on/off, Shift+F5 is ignored. F5 stays hotkey 5, so the
-  slideshow button of a clicker can trigger it. One Esc alone does nothing,
-  so that button cannot blank the screens.
+  slideshow button of a clicker can trigger it. One Esc alone does not blank
+  the screens: it only removes a Bible verse that is live (see 5.5).
 - Item notes and options (auto-mark done, loop, auto-advance).
 - Layout changes by item type, see section 6.
 
@@ -191,7 +193,7 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - "Edit groups" opens the group settings (screens per group, idle screen).
 
 ### 5.5 Bible tab
-- A third tab next to Order and Library. Like Library, it uses the left column
+- The second tab, between Order and Library. Like Library, it uses the left column
   (search, version, picker, "Today" chips, Text style / Download / Import) and
   the center (location bar, Add to order, Show now, verse list). The Live panel
   and the Screens column stay visible.
@@ -216,6 +218,18 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Search and picker share one state.
 - Verse list on the right with LIVE and NEXT marks. ↑ ↓ move verse by verse.
 - Buttons: Add to order, Show now.
+- **Verse over a slide (option "Bible as overlay", on by default).** A
+  full-screen verse covers the slide or video that is live, but does not remove
+  it. A video keeps playing (with sound) under the verse. While the verse is up,
+  ← → move through verses. When the verse is removed (one Esc, Clear text, or
+  the next item), the same slide shows again and ← → move through slides. With
+  the option off, a full-screen verse replaces the content (the old behavior).
+  Lower-third verses always stay over the content. Songs always replace it.
+- **Option "Back to Order after verse"** (off by default):
+  when a verse leaves the screens, the Order tab opens with the live item
+  selected.
+- Both options are check boxes under the Bible tools and are saved in the
+  settings (`bibleOptions`).
 
 ### 5.6 Bottom: Hotkeys + Audio / Message / Stage tabs
 - **One slim bar (about 44 px), always visible.** From left to right:

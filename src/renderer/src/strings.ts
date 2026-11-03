@@ -136,6 +136,9 @@ export const strings = {
   changeFolder: 'Change…',
   changeFolderHint: 'Choose another folder to watch',
   markSeen: 'Mark all seen',
+  collapseShared: 'Hide the shared folder list',
+  expandShared: 'Show the shared folder list',
+  resizeShared: 'Drag up or down to change the size. Double-click to go back to the normal size.',
   newCount: (n: number) => `${n} NEW`,
   all: 'All',
   allHint: 'Add all files of this folder to the order, in file-name order',
@@ -222,7 +225,16 @@ export const strings = {
 
   // Bible panel
   bibleLabel: 'Bible',
-  bibleTabHint: 'Bible (Ctrl+B: open and search)',
+  bibleTabHint: 'Bible (Ctrl+2, or Ctrl+B: open and search)',
+  bibleOverlay: 'Bible as overlay',
+  bibleOverlayHint:
+    'A verse goes over the slide or video that is live. Esc removes the verse and the slide shows again. A video keeps playing under the verse. Off: the verse replaces it.',
+  bibleBackToOrder: 'Back to Order after verse',
+  bibleBackToOrderHint: 'When the verse leaves the screens, the Order tab opens with the live item selected.',
+  orderTabHint: 'Order (Ctrl+1)',
+  libraryTabHint: 'Library (Ctrl+3)',
+  /** The key shown on each left tab, in tab order: Order, Bible, Library. */
+  leftTabKeys: ['Ctrl+1', 'Ctrl+2', 'Ctrl+3'],
   bibleEmptyMain: 'Add a Bible version first (left column).',
   noBible:
     'No Bible version yet. Download a free version (for example Reina Valera 1909), or import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text.',

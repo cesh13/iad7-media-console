@@ -41,8 +41,11 @@ export function ScreenView(props: ScreenViewProps) {
   // Full-screen text shows over the idle background (not over the logo), when its style says so.
   const textFull = !!text && text.settings.mode !== 'lower'
   const textOverIdle = (text?.style?.background ?? 'idle') === 'idle'
-  const showIdle =
-    !content && (!textFull || (textOverIdle && (props.idle.kind === 'background' || props.idle.kind === 'loop')))
+  const idleIsMedia = props.idle.kind === 'background' || props.idle.kind === 'loop'
+  const showIdle = !content && (!textFull || (textOverIdle && idleIsMedia))
+  // A Bible verse over a slide or video ("overlay" option): the content stays (a video keeps
+  // playing) but is covered, so the verse looks the same as without content.
+  const coverContent = !!content && textFull && textOverIdle
   return (
     <div className="screen-view">
       {showIdle && <IdleScreen idle={props.idle} logoUrl={props.logoUrl} />}
@@ -61,6 +64,8 @@ export function ScreenView(props: ScreenViewProps) {
         />
       )}
       {content?.ended && content.settings.endAction === 'black' && <div className="layer layer-black" />}
+      {coverContent && <div className="layer layer-black" />}
+      {coverContent && idleIsMedia && <IdleScreen idle={props.idle} logoUrl={props.logoUrl} />}
       {text && <TextView text={text} />}
       {overlays.logo && props.logoUrl && <LogoLayer url={props.logoUrl} />}
       {overlays.black && <div className="layer layer-black" />}

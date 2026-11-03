@@ -78,9 +78,18 @@ export interface Settings {
   favorites?: Favorite[]
   /** How Bible text and song text look on the screens. */
   textStyles?: TextStyles
+  bibleOptions?: BibleOptions
   /** The program that new services start with. */
   programTemplate?: ProgramPart[]
   remote?: RemoteSettings
+}
+
+/** How Bible verses go on the screens (SPEC 5.5). */
+export interface BibleOptions {
+  /** A full-screen verse covers the slide or video but keeps it, so clearing the verse shows it again. */
+  overlay: boolean
+  /** After a verse is cleared, open the Order tab and select the live item. */
+  backToOrder: boolean
 }
 
 // ---- Remote control (SPEC section 11) ----
@@ -675,6 +684,7 @@ export interface ServiceState {
   favorites: Favorite[]
   logoUrl?: string
   textStyles: TextStyles
+  bibleOptions: BibleOptions
   /** The change that "Undo" takes back, or null when there is nothing to undo. */
   undo: UndoKind | null
 }
@@ -762,6 +772,7 @@ export interface MediaConsoleApi {
   /** Show a file dialog and choose the background picture or video of a text style. */
   pickTextBackground(kind: TextStyleKind): Promise<void>
   resetTextStyle(kind: TextStyleKind): Promise<void>
+  setBibleOptions(change: Partial<BibleOptions>): Promise<void>
 
   // Shared folder
   getShared(): Promise<SharedState>
