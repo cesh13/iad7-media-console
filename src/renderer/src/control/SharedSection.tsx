@@ -207,11 +207,7 @@ export function SharedSection({ state }: { state: ServiceState }) {
         <div className="spacer" />
         {/* When the list is hidden, still show that new files came in. */}
         {collapsed && newCount > 0 && <span className="badge-new">{strings.newCount(newCount)}</span>}
-        {!collapsed && (
-          <button className="btn btn-small btn-quiet" title={strings.changeFolderHint} onClick={() => void api.pickSharedFolder()}>
-            {strings.changeFolder}
-          </button>
-        )}
+        <FolderMenu />
       </div>
       {!collapsed && (
         <>
@@ -233,6 +229,66 @@ export function SharedSection({ state }: { state: ServiceState }) {
             {renderList('', 0)}
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The "⋯" button with Change folder and Clear. One small button, so the header
+ * fits in the narrow column. The list opens upward: the section is at the
+ * bottom of the window.
+ */
+function FolderMenu() {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const choose = (action: () => void) => {
+    setOpen(false)
+    action()
+  }
+
+  return (
+    <div className="folder-menu" ref={box}>
+      <button
+        className={open ? 'btn btn-small btn-icon btn-quiet is-open' : 'btn btn-small btn-icon btn-quiet'}
+        title={strings.folderMenuHint}
+        aria-label={strings.folderMenuHint}
+        onClick={() => setOpen(!open)}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="add-menu-list folder-menu-list" role="menu">
+          <button role="menuitem" onClick={() => choose(() => void api.pickSharedFolder())}>
+            <span>{strings.changeFolder}</span>
+            <span className="dim">{strings.changeFolderHint}</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={() =>
+              choose(() => {
+                if (window.confirm(strings.clearFolderConfirm)) void api.setSharedFolder(null)
+              })
+            }
+          >
+            <span>{strings.clearFolder}</span>
+            <span className="dim">{strings.clearFolderHint}</span>
+          </button>
+        </div>
       )}
     </div>
   )

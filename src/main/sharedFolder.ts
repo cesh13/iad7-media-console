@@ -208,7 +208,12 @@ async function startWatcher(): Promise<void> {
   entries.clear()
   queue.length = 0
   fileCount = 0
-  if (!root) return
+  if (!root) {
+    // Cleared: show the empty "choose a folder" state.
+    error = undefined
+    changed()
+    return
+  }
   const reachable = await stat(root)
     .then((s) => s.isDirectory())
     .catch(() => false)

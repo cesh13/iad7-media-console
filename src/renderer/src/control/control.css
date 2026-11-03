@@ -1676,6 +1676,21 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+}
+.folder-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.folder-menu .btn-icon {
+  width: 28px;
+}
+/* Opens upward, because the section is at the bottom of the window. */
+.folder-menu-list {
+  top: auto;
+  bottom: calc(100% + 4px);
+  width: 220px;
 }
 .shared-status.ok {
   color: var(--ok);

@@ -134,13 +134,20 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   `folderChoice`. When a service is copied, the folder stays and the choice is
   cleared.
 
-**Shared folder section (fixed at the bottom of the Order tab)**
+**Resource folder section (fixed at the bottom of the Order tab)**
+- Called "shared folder" in the code (`sharedFolder`, `SharedSection`).
 - Stays at the bottom while the order list scrolls above it. Its own file list
   scrolls, so it takes at most half of the column.
-- Watches a network folder, for example `\\MEDIA-PC\Compartida`.
-- **Change…** in the header opens a folder dialog (at the current folder) to
-  watch another folder. There is no "stop watching" button: the share is
-  always watched once it is set.
+- Click the title to hide or show the list. When it is hidden, the "N NEW"
+  count still shows in the title row. Drag the top edge to change the height;
+  double-click the edge to go back to the normal size. Both are remembered on
+  this computer.
+- Watches any folder: on this computer or on the network, for example
+  `\\MEDIA-PC\Compartida`.
+- A **⋯** button in the header opens a small menu (it opens upward):
+  **Change folder…** opens a folder dialog (at the current folder) to watch
+  another folder. **Clear** (after a confirm) stops watching the folder
+  and shows the "choose a folder" form again. Items already in the order stay.
 - Shows files and subfolders. New items have a dot and a "N NEW" count.
 - Subfolders open in place (option 1) and have an **All** button that adds all
   their files to the order in file-name order (option 2).
@@ -315,7 +322,7 @@ See `docs/design/Preview-*.dc.html`.
 5. PDF slides with `pdf.js`; .pptx → PDF conversion with PowerPoint or LibreOffice.
 6. Bible: data import, search, picker.
 7. Folder items with search (hymnal); search index.
-8. Shared folder watching.
+8. Shared folder watching (the "Resource folder" in the UI).
 9. Audio panel (background music, fade, duck, device).
 10. Stage screen: clock, countdown, messages.
 11. Library tab, Favorites, hotkeys, past services.
