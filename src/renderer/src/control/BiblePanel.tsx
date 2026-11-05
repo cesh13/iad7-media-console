@@ -261,6 +261,7 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
               <span className="label-inline">{strings.pickChapter(bookName(book), bible.chapterCount(book))}</span>
               <NumberGrid
                 count={bible.chapterCount(book)}
+                current={chapter}
                 isOn={(n) => n === chapter}
                 onPick={(n) => bible.pickChapter(n)}
               />
@@ -269,7 +270,12 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
           {step === 'verses' && (
             <>
               <span className="label-inline">{strings.pickVerse(bookName(book), chapter)}</span>
-              <NumberGrid count={bible.verseCount} isOn={(n) => n >= sel.from && n <= sel.to} onPick={bible.pickVerse} />
+              <NumberGrid
+                count={bible.verseCount}
+                current={sel.from}
+                isOn={(n) => n >= sel.from && n <= sel.to}
+                onPick={bible.pickVerse}
+              />
             </>
           )}
         </div>
@@ -327,14 +333,6 @@ export function BibleSide({ state, bible }: { state: ServiceState; bible: Bible 
 /** Center of the Bible tab: location bar, Add to order / Show now, and the verse list. */
 export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible }) {
   const { book, chapter, sel, ref, hits } = bible
-  if (bible.bibles.length === 0) {
-    return (
-      <section className="panel bible-main">
-        <p className="help">{strings.bibleEmptyMain}</p>
-      </section>
-    )
-  }
-
   // The Bible text live in the target, if it is this chapter.
   const liveText = liveTextOf(state)
   const liveHere = liveText?.ref && liveText.ref.book === book && liveText.ref.chapter === chapter ? liveText : null
@@ -353,10 +351,25 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
     bible.setSel({ from: v, to: v })
   }
 
-  // Keep the live verse in view while it moves.
+  // Keep the selected verse in view: arrow keys, a typed number, a search, a "Today" chip.
+  // `verses` is here because a new chapter loads after the selection changes.
+  useEffect(() => {
+    bible.listRef.current?.querySelector(`[data-verse="${sel.from}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [sel.from, sel.to, book, chapter, bible.verses, hits])
+
+  // Keep the live verse in view while it moves. This runs after the effect above,
+  // so the live verse is the one shown when both change at the same time.
   useEffect(() => {
     bible.listRef.current?.querySelector('.verse-row.is-live')?.scrollIntoView({ block: 'nearest' })
-  }, [liveVerse])
+  }, [liveVerse, bible.verses])
+
+  if (bible.bibles.length === 0) {
+    return (
+      <section className="panel bible-main">
+        <p className="help">{strings.bibleEmptyMain}</p>
+      </section>
+    )
+  }
 
   return (
     <section className="panel bible-main">
@@ -423,6 +436,7 @@ export function BibleMain({ state, bible }: { state: ServiceState; bible: Bible 
               return (
                 <button
                   key={n}
+                  data-verse={n}
                   className={cls.join(' ')}
                   onClick={(e) => bible.pickVerse(n, e)}
                   onDoubleClick={() => (liveHere ? void api.showVerse(n) : ref && void api.showBibleNow(ref, n))}
@@ -488,11 +502,29 @@ function BookGrid({ current, onPick }: { current: number; onPick: (n: number) =>
   )
 }
 
-function NumberGrid(props: { count: number; isOn: (n: number) => boolean; onPick: (n: number, e: MouseEvent) => void }) {
+function NumberGrid(props: {
+  count: number
+  /** The number to keep in view. For a range, this is its first verse. */
+  current: number
+  isOn: (n: number) => boolean
+  onPick: (n: number, e: MouseEvent) => void
+}) {
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  // Keep the chosen number in view. `count` is here because the grid changes with the chapter.
+  useEffect(() => {
+    gridRef.current?.querySelector(`[data-num="${props.current}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [props.current, props.count])
+
   return (
-    <div className="number-grid">
+    <div className="number-grid" ref={gridRef}>
       {Array.from({ length: props.count }, (_, i) => i + 1).map((n) => (
-        <button key={n} className={props.isOn(n) ? 'num is-on' : 'num'} onClick={(e) => props.onPick(n, e)}>
+        <button
+          key={n}
+          data-num={n}
+          className={props.isOn(n) ? 'num is-on' : 'num'}
+          onClick={(e) => props.onPick(n, e)}
+        >
           {n}
         </button>
       ))}
