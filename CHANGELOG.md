@@ -1,5 +1,11 @@
 # Changes
 
+## 1.3.1 – 2026-11-04
+
+- Bible tab: the verse list now scrolls by itself to keep the selected verse in view, for example with the arrow keys, a typed number or a search.
+- Bible tab: the number grid on the left now scrolls to the selected verse or chapter.
+- Fixed: the Bible tab could stop working the first time a Bible was added on a computer that had none.
+
 ## 1.3.0 – 2026-11-04
 
 - Folders in the order now show their subfolders, up to 3 levels deep. Click a subfolder to open it. Search looks in all subfolders and shows where each file is.
