@@ -123,6 +123,13 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 
 **Folder items in the order (for example the hymnal, 613 files)**
 - The folder row opens in place.
+- Subfolders (up to 3 levels, the same limit as the Resource folder) open in
+  place inside the list, above the files of their level, with the number of
+  files. Only subfolders that have a media file inside are shown. Search looks
+  in all subfolders and shows the subfolder of each result.
+- A dropped folder becomes one folder item when it has more than 30 media files
+  or has media files in subfolders. A smaller folder adds its files to the
+  order. The index stops at 5000 files.
 - It has a search input and a list with a fixed height (about 168 px) that
   scrolls inside.
 - Search by number (a number alone puts that item first), by title, and by
@@ -130,8 +137,8 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   (`str.normalize('NFD').replace(/[̀-ͯ]/g, '')`).
 - Build the search index once when the folder is added; update it when the
   folder changes. For .pptx, extract the text during conversion.
-- ↑ ↓ move in the list, Enter chooses. The chosen file is saved in
-  `folderChoice`. When a service is copied, the folder stays and the choice is
+- ↑ ↓ move in the list, Enter chooses a file or opens a subfolder. The chosen
+  file is saved in `folderChoice`. When a service is copied, the folder stays and the choice is
   cleared.
 
 **Resource folder section (fixed at the bottom of the Order tab)**

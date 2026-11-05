@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { byFileName, itemType } from './fileTypes'
-import { folderStatus, openFolderIndex } from './folderIndex'
+import { folderStatus, mediaFiles, openFolderIndex } from './folderIndex'
 import { refLabel } from '../shared/bibleBooks'
 import type {
   AddFilesResult,
@@ -228,8 +228,9 @@ export function serviceState(): Omit<
 const folderItemThreshold = 30
 
 /**
- * Add files. A folder adds the files inside it (not subfolders), in file-name
- * order; a big folder becomes one folder item, unless `asFiles` is set.
+ * Add files. A small folder adds the files inside it, in file-name order. A big
+ * folder, or a folder with media files in subfolders, becomes one folder item,
+ * unless `asFiles` is set.
  */
 export async function addFiles(paths: string[], asFiles = false): Promise<AddFilesResult> {
   // Files and folder items, in file-name order.
@@ -241,7 +242,8 @@ export async function addFiles(paths: string[], asFiles = false): Promise<AddFil
       const entries = await readdir(p, { withFileTypes: true })
       const inside = entries.filter((e) => e.isFile()).map((e) => join(p, e.name)).sort(byFileName)
       // A big folder (the hymnal) is one item with search; a small folder adds its files.
-      if (!asFiles && inside.filter((f) => itemType(f)).length > folderItemThreshold) units.push({ path: p, folder: true })
+      const big = inside.filter((f) => itemType(f)).length > folderItemThreshold
+      if (!asFiles && (big || (await mediaFiles(p)).some((f) => f.includes('/')))) units.push({ path: p, folder: true })
       else units.push(...inside.map((f) => ({ path: f, folder: false })))
     } else {
       units.push({ path: p, folder: false })

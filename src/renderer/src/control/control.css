@@ -1572,6 +1572,9 @@
   color: var(--ok);
   font-weight: 600;
 }
+.folder-dir {
+  background: var(--bg-card);
+}
 .folder-num {
   width: 34px;
   flex-shrink: 0;

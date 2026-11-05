@@ -557,6 +557,8 @@ export interface SharedState {
 export interface FolderEntry {
   path: string
   name: string
+  /** The subfolder the file is in, with "/" ("Navidad/Niños"). "" = the top of the folder. */
+  dir: string
   /** The number at the start of the file name ("045 Santo.pptx" → 45). */
   number: number | null
   title: string

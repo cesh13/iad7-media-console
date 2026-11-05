@@ -3,17 +3,25 @@ import { watch, type FSWatcher } from 'chokidar'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, relative, sep } from 'node:path'
 import { normalize } from '../shared/bibleBooks'
 import type { FolderEntry } from '../shared/types'
 import { fileText } from './fileText'
-import { byFileName, itemType } from './fileTypes'
+import { byFileName, isSkippedDir, itemType } from './fileTypes'
 
 /**
  * Search index of a folder item (for example the hymnal with 613 files):
  * number, title and the words in the file (lyrics). Built once when the
  * folder is added, saved to disk, and updated when the folder changes.
+ * It includes subfolders. Files are keyed by their path inside the folder,
+ * with "/" (for example "Navidad/045 Noche de paz.pptx"), because two
+ * subfolders can have a file with the same name.
  */
+
+/** How many levels of subfolders are read. The Resource folder uses the same limit. */
+const maxDepth = 3
+/** Stop here, so a very big folder (Documents chosen by mistake) does not fill the index. */
+const maxFiles = 5000
 
 interface Indexed {
   size: number
@@ -52,12 +60,19 @@ function parseName(path: string): { number: number | null; title: string } {
   return { number: Number(m[1]), title: (m[2] || name).trim() }
 }
 
-function makeEntry(path: string, text: string): FolderEntry & { norm: string; normTitle: string } {
+/** "Navidad/045 Noche de paz.pptx" → "Navidad". A file at the top → "". */
+function dirOf(rel: string): string {
+  const i = rel.lastIndexOf('/')
+  return i < 0 ? '' : rel.slice(0, i)
+}
+
+function makeEntry(path: string, rel: string, text: string): FolderEntry & { norm: string; normTitle: string } {
   const { number, title } = parseName(path)
   const normTitle = normalize(title)
   return {
     path,
     name: basename(path),
+    dir: dirOf(rel),
     number,
     title,
     type: itemType(path)!,
@@ -74,31 +89,46 @@ function scheduleSave(ix: FolderIndex): void {
   }, 1000)
 }
 
-async function indexOne(ix: FolderIndex, path: string): Promise<void> {
-  const name = basename(path)
+async function indexOne(ix: FolderIndex, rel: string): Promise<void> {
+  const path = join(ix.folder, rel)
   if (!itemType(path)) return
   const info = await stat(path).catch(() => null)
   if (!info?.isFile()) return
-  let cached = ix.cache[name]
+  let cached = ix.cache[rel]
   if (!cached || cached.size !== info.size || cached.mtime !== info.mtimeMs) {
     cached = { size: info.size, mtime: info.mtimeMs, text: await fileText(path) }
-    ix.cache[name] = cached
+    ix.cache[rel] = cached
   }
-  ix.entries.set(name, makeEntry(path, cached.text))
+  ix.entries.set(rel, makeEntry(path, rel, cached.text))
+}
+
+/**
+ * The media files in a folder and its subfolders, as paths inside the folder
+ * with "/". A subfolder that cannot be read is skipped.
+ */
+export async function mediaFiles(folder: string, dir = '', depth = 0, found: string[] = []): Promise<string[]> {
+  const list = await readdir(join(folder, dir), { withFileTypes: true }).catch((err) => {
+    if (!dir) throw err
+    return []
+  })
+  for (const e of list) {
+    if (found.length >= maxFiles) break
+    const rel = dir ? `${dir}/${e.name}` : e.name
+    if (e.isFile() && itemType(e.name)) found.push(rel)
+    else if (e.isDirectory() && depth < maxDepth && !isSkippedDir(e.name)) await mediaFiles(folder, rel, depth + 1, found)
+  }
+  return found
 }
 
 async function build(ix: FolderIndex): Promise<void> {
-  const names = (await readdir(ix.folder, { withFileTypes: true }))
-    .filter((e) => e.isFile() && itemType(e.name))
-    .map((e) => e.name)
-    .sort(byFileName)
+  const names = (await mediaFiles(ix.folder)).sort(byFileName)
   let done = 0
   let lastReport = 0
   // A few files at the same time: faster on a network share, still light.
   const queue = [...names]
   const worker = async () => {
-    for (let name = queue.shift(); name; name = queue.shift()) {
-      await indexOne(ix, join(ix.folder, name))
+    for (let rel = queue.shift(); rel; rel = queue.shift()) {
+      await indexOne(ix, rel)
       done++
       if (Date.now() - lastReport > 300) {
         lastReport = Date.now()
@@ -109,7 +139,8 @@ async function build(ix: FolderIndex): Promise<void> {
   }
   await Promise.all([worker(), worker(), worker(), worker()])
   // Forget files that are gone.
-  for (const name of Object.keys(ix.cache)) if (!names.includes(name)) delete ix.cache[name]
+  const present = new Set(names)
+  for (const rel of Object.keys(ix.cache)) if (!present.has(rel)) delete ix.cache[rel]
   ix.progress = null
   scheduleSave(ix)
   notify(ix.folder)
@@ -135,18 +166,20 @@ export function openFolderIndex(folder: string): void {
 
   // Network folders need polling; local folders get events from the system.
   ix.watcher = watch(folder, {
-    depth: 0,
+    depth: maxDepth,
     ignoreInitial: true,
     usePolling: folder.startsWith('\\\\'),
     interval: 3000,
-    awaitWriteFinish: { stabilityThreshold: 2000, pollInterval: 500 }
+    awaitWriteFinish: { stabilityThreshold: 2000, pollInterval: 500 },
+    ignored: (path, stats) => path !== folder && (stats?.isFile() ? !itemType(path) : isSkippedDir(basename(path)))
   })
-  const update = (path: string) => void indexOne(ix, path).then(() => (scheduleSave(ix), notify(folder)))
+  const relOf = (path: string) => relative(folder, path).split(sep).join('/')
+  const update = (path: string) => void indexOne(ix, relOf(path)).then(() => (scheduleSave(ix), notify(folder)))
   ix.watcher.on('add', update)
   ix.watcher.on('change', update)
   ix.watcher.on('unlink', (path) => {
-    ix.entries.delete(basename(path))
-    delete ix.cache[basename(path)]
+    ix.entries.delete(relOf(path))
+    delete ix.cache[relOf(path)]
     scheduleSave(ix)
     notify(folder)
   })
@@ -166,6 +199,7 @@ export function folderStatus(folder: string): { count: number; progress: number 
 /**
  * Search: a number alone puts that number first; words must all appear in the
  * title or the text (title matches first). Accents and case are ignored.
+ * An empty query returns all files, so the list can show every subfolder.
  */
 export function searchFolder(folder: string, query: string, limit = 200): FolderEntry[] {
   const ix = indexes.get(folder)
@@ -185,5 +219,5 @@ export function searchFolder(folder: string, query: string, limit = 200): Folder
     const inTitle = matches.filter((e) => words.every((w) => e.normTitle.includes(w)))
     list = [...inTitle, ...matches.filter((e) => !inTitle.includes(e))]
   }
-  return list.slice(0, limit).map(({ norm: _n, normTitle: _t, ...e }) => e)
+  return (q ? list.slice(0, limit) : list).map(({ norm: _n, normTitle: _t, ...e }) => e)
 }

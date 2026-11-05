@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { basename, join, relative, sep } from 'node:path'
 import type { SharedEntry, SharedState } from '../shared/types'
-import { byFileName, itemType } from './fileTypes'
+import { byFileName, isSkippedDir, itemType } from './fileTypes'
 import { prepareFile } from './prepare'
 
 /**
@@ -26,8 +26,6 @@ const stableMs = 3000
  * to the cache.
  */
 const maxFiles = 1000
-/** Folders that never hold service files. Folders that start with "." are skipped too (.git). */
-const skippedDirs = new Set(['node_modules', '$recycle.bin', 'system volume information'])
 
 let root: string | null = null
 let watcher: FSWatcher | null = null
@@ -200,7 +198,7 @@ function isSkipped(path: string, stats?: { isFile(): boolean }): boolean {
   // Files the app cannot show (code, documents, …) are not even polled.
   if (stats?.isFile()) return !itemType(path)
   const name = basename(path).toLowerCase()
-  return name.startsWith('.') || name.startsWith('~$') || skippedDirs.has(name) || name === 'thumbs.db' || name === 'desktop.ini'
+  return isSkippedDir(name) || name.startsWith('~$') || name === 'thumbs.db' || name === 'desktop.ini'
 }
 
 async function startWatcher(): Promise<void> {

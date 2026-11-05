@@ -41,6 +41,15 @@ export function itemType(path: string): ItemType | null {
   return typeByExtension[extname(name)] ?? null
 }
 
+/** Folders that never hold service files. */
+const skippedDirs = new Set(['node_modules', '$recycle.bin', 'system volume information'])
+
+/** True for folders that are not read: the ones above, and hidden folders (.git). */
+export function isSkippedDir(name: string): boolean {
+  const lower = name.toLowerCase()
+  return lower.startsWith('.') || skippedDirs.has(lower)
+}
+
 /** Sort by file name the way people expect: "2" before "10". */
 export function byFileName(a: string, b: string): number {
   return basename(a).localeCompare(basename(b), undefined, { numeric: true, sensitivity: 'base' })
