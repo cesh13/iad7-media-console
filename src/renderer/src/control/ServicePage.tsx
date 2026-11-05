@@ -82,7 +82,9 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
         setLeftTab((['order', 'bible', 'library'] as const)[Number(e.key) - 1])
         return
       }
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
+      // A checkbox keeps the focus after a click, but nobody types in it: the keys must still work.
+      const isCheckbox = target instanceof HTMLInputElement && target.type === 'checkbox'
+      if (!isCheckbox && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return
       // Ctrl+Z: undo the last change to the order.
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault()
