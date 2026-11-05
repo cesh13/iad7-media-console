@@ -1,5 +1,12 @@
 # Changes
 
+## 1.3.0 – 2026-11-04
+
+- Folders in the order now show their subfolders, up to 3 levels deep. Click a subfolder to open it. Search looks in all subfolders and shows where each file is.
+- A folder that has media files in subfolders now becomes one folder item when you drop it on the order. Before, the files in its subfolders were left out.
+- The file list of a big folder now shows all files, not only the first 200.
+- Fixed: after a click on a checkbox, the keyboard and the clicker stopped working until you clicked somewhere else, and Space changed the checkbox instead of going to the next item.
+
 ## 1.2.0 – 2026-11-03
 
 - The shared folder is now called "Resource folder". It can be any folder, on this computer or on the network.
