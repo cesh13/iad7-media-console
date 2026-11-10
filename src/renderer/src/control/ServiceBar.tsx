@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
 import { formatClock, formatCountdown, useNow } from '../view/clock'
+import { PresetDialog } from './PresetDialog'
 
 const api = window.mediaConsole
 
@@ -19,9 +20,10 @@ export function ServiceClock({ state }: { state: ServiceState }) {
   )
 }
 
-/** Bottom bar (SPEC 5.6): the loaded service, with rename and "+ New". */
-export function ServiceBar({ state }: { state: ServiceState }) {
+/** Bottom bar (SPEC 5.6): the loaded service, with rename, "+ New", presets and the start screen. */
+export function ServiceBar({ state, onOpenStart }: { state: ServiceState; onOpenStart: () => void }) {
   const [editing, setEditing] = useState(false)
+  const [savingPreset, setSavingPreset] = useState(false)
   const [name, setName] = useState(state.service.name)
   useEffect(() => setName(state.service.name), [state.service.name])
 
@@ -68,6 +70,13 @@ export function ServiceBar({ state }: { state: ServiceState }) {
       <button className="btn btn-small btn-quiet" onClick={() => void api.newService()}>
         + {strings.newService}
       </button>
+      <button className="btn btn-small btn-quiet" title={strings.saveAsPresetHint} disabled={state.service.items.length === 0} onClick={() => setSavingPreset(true)}>
+        {strings.saveAsPreset}
+      </button>
+      <button className="btn btn-small btn-quiet" title={strings.startScreenHint} onClick={onOpenStart}>
+        {strings.startScreenButton}
+      </button>
+      {savingPreset && <PresetDialog state={state} onClose={() => setSavingPreset(false)} />}
     </div>
   )
 }

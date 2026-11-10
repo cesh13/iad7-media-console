@@ -5,6 +5,7 @@ import { hasConnectedOutput } from './ScreensColumn'
 import { ServiceClock } from './ServiceBar'
 import { ScreensPage } from './ScreensPage'
 import { ServicePage } from './ServicePage'
+import { StartScreen } from './StartScreen'
 
 const api = window.mediaConsole
 
@@ -16,6 +17,10 @@ export function App() {
   const [screens] = useScreensState()
   const update = useUpdateStatus()
   const overlays = state?.overlays
+  // The start screen shows each time the app opens. It replaces the main page, so the live keys do not work under it.
+  const [startOpen, setStartOpen] = useState(true)
+
+  if (startOpen) return state ? <StartScreen state={state} onClose={() => setStartOpen(false)} /> : null
 
   return (
     <div className="app">
@@ -81,7 +86,7 @@ export function App() {
           )}
         </div>
       </header>
-      {tab === 'service' ? <ServicePage onOpenScreens={() => setTab('screens')} /> : <ScreensPage />}
+      {tab === 'service' ? <ServicePage onOpenScreens={() => setTab('screens')} onOpenStart={() => setStartOpen(true)} /> : <ScreensPage />}
     </div>
   )
 }

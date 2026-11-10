@@ -83,14 +83,14 @@ before you start the installed app on the same computer.
 |---|---|
 | Space | Next item |
 | ← → | Previous / next slide, Bible screen or song stanza |
-| ↑ ↓ | Select an item in the order (in the Bible verse list: verse by verse) |
+| ↑ ↓ | Select an item in the playlist (while slides are live: previous or next slide; in the Bible verse list: verse by verse) |
 | Enter | Selected item goes live |
-| Delete | Remove the selected item from the order (also the × on the row) |
+| Delete | Remove the selected item from the playlist (also the × on the row) |
 | Esc | Clear the screens of the target |
 | F1–F8 | Hotkeys |
-| Ctrl+Z | Undo the last change to the order (add, remove, move, copy) |
+| Ctrl+Z | Undo the last change to the playlist (add, remove, move, copy) |
 
-**+ Text** in the order adds a song, chorus or announcement that you type in the
+**+ Text** in the playlist adds a song, chorus or announcement that you type in the
 app. An empty line starts a new screen. The text of a .txt song can be changed in
 the preview too (only in this service, not in the file).
 
@@ -101,7 +101,7 @@ Everything is in the user data folder (`%APPDATA%\Media Console` on Windows):
 | Path | Content |
 |---|---|
 | `settings.json` | Screens, groups, logo, audio, library, favorites, saved messages |
-| `services\*.json` | One file per service (the order) |
+| `services\*.json` | One file per service (the playlist) |
 | `media-cache\` | Local copies of all media; PDF pages as pictures. Safe to delete: files are copied again |
 | `bibles\` | Imported Bible versions |
 | `indexes\` | Search index of folder items (hymnal) |

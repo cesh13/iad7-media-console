@@ -21,7 +21,7 @@ export const strings = {
   remove: 'Remove',
   folderOpen: 'Click to show the files',
   folderClose: 'Click to hide the files',
-  removeFromOrder: 'Remove from the order (Delete). Ctrl+Z brings it back.',
+  removeFromOrder: 'Remove from the playlist (Delete). Ctrl+Z brings it back.',
   useScreen: 'Use for output',
   useScreenHelp: 'Turn on to show the service on this screen. Turn off to stop using it (its name and group are removed).',
   defaultScreenName: (n: number) => `Screen ${n}`,
@@ -47,7 +47,7 @@ export const strings = {
   windowSize: (w: number, h: number) => `window ${w}×${h}`,
 
   // Order panel
-  orderLabel: 'Order',
+  orderLabel: 'Playlist',
   addMenu: 'Add',
   addMenuFiles: 'Files…',
   addMenuFilesHint: 'Videos, pictures, audio, PDF or PowerPoint',
@@ -57,7 +57,7 @@ export const strings = {
   resetProgressHint: 'Mark all items as not done',
   resetProgressConfirm: 'Reset?',
   emptyOrder: 'Drop videos, pictures, PDF or PowerPoint files here, or use Add. Files are added in file-name order.',
-  dropHere: 'Drop to add to the order',
+  dropHere: 'Drop to add to the playlist',
   skippedFiles: (names: string[]) => `Not added (type not supported): ${names.join(', ')}`,
   badgeLive: 'LIVE',
   badgeNext: 'NEXT',
@@ -76,6 +76,39 @@ export const strings = {
   renameService: 'Rename this service',
   newService: 'New',
   elapsedHint: 'Time since the first item went live',
+
+  // Start screen and presets
+  startContinue: 'Continue',
+  startPresets: 'Start from a preset',
+  startRecent: 'Recent services',
+  startEmpty: 'Empty service',
+  startSuggested: 'Suggested now',
+  startLiveNow: 'On the screens now',
+  startLiveWarning: 'Something is on the screens. Starting or opening another service takes it off.',
+  startNoPresets: 'No presets yet. Build a playlist, then click "Save as preset" in the bottom bar.',
+  startScreenButton: 'Start screen',
+  startScreenHint: 'Open the start screen: continue, or start from a preset',
+  saveAsPreset: 'Save as preset',
+  saveAsPresetHint: 'Save this playlist and program to use again',
+  presetSaveTitle: 'Save as preset',
+  presetEditTitle: 'Edit preset',
+  presetSaveHelp: (n: number) => `Saves a copy of this playlist (${n} ${n === 1 ? 'item' : 'items'}) and its program times. Changes you make later in this service do not change the preset.`,
+  presetName: 'Name',
+  presetNamePlaceholder: 'For example: Culto entre semana',
+  presetDays: 'Usual days',
+  presetTime: 'Usual time',
+  presetScheduleHelp: 'The days and time are used to suggest this preset when the app opens.',
+  presetReplaceNote: (name: string) => `A preset named "${name}" already exists. Saving replaces it with this playlist.`,
+  presetNameTaken: 'Another preset already has this name.',
+  presetSave: 'Save',
+  presetReplace: 'Replace preset',
+  presetCancel: 'Cancel',
+  presetDelete: 'Delete',
+  presetDeleteConfirm: 'Click again to delete',
+  presetEditHint: 'Edit name, days and time',
+  presetNoSchedule: 'No usual day',
+  presetItems: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
+  weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
 
   // Hotkeys
   noHotkeys: 'No hotkeys',
@@ -97,7 +130,7 @@ export const strings = {
   sortName: 'Name',
   sortUsed: 'Last used',
   sortAdded: 'Date added',
-  addAllToOrder: 'Add all to order',
+  addAllToOrder: 'Add all to playlist',
   libEmpty: 'No files here.',
   dirHint: (n: number) => `${n} files · double-click to open`,
   usedText: (u?: { count: number; last: number }) => {
@@ -105,7 +138,7 @@ export const strings = {
     if (u.count > 2) return `Used ${u.count} times`
     return `Used ${new Date(u.last).toLocaleDateString('es', { day: 'numeric', month: 'short' })}`
   },
-  libTip: 'Double-click or Enter adds a file to the order. You can also drag a file to the Order tab.',
+  libTip: 'Double-click or Enter adds a file to the playlist. You can also drag a file to the Playlist tab.',
   libSelectHint: 'Select a file to see its details.',
   typeLabel: 'Type',
   sizeLabel: 'Size',
@@ -119,9 +152,9 @@ export const strings = {
   blackShort: 'Black screen',
   countdown5: 'Countdown 5 min',
   noHotkey: 'No hotkey',
-  reuseHelp: (name: string) => `Reuse "${name}": copy its order to this service, then change only what is new. Folder items keep the folder; choose the file again.`,
+  reuseHelp: (name: string) => `Reuse "${name}": copy its playlist to this service, then change only what is new. Folder items keep the folder; choose the file again.`,
   folderKept: 'folder: choose the file again',
-  copyOrder: 'Copy order to this service',
+  copyOrder: 'Copy playlist to this service',
   openThisService: 'Open this service',
 
   // Resource folder (called "shared folder" in the code)
@@ -137,15 +170,15 @@ export const strings = {
   changeFolderHint: 'Choose another folder to watch',
   folderMenuHint: 'Folder options',
   clearFolder: 'Clear',
-  clearFolderHint: 'Stop watching this folder. Items already in the order stay.',
-  clearFolderConfirm: 'Stop watching this folder? Items already in the order stay. You can choose a folder again later.',
+  clearFolderHint: 'Stop watching this folder. Items already in the playlist stay.',
+  clearFolderConfirm: 'Stop watching this folder? Items already in the playlist stay. You can choose a folder again later.',
   markSeen: 'Mark all seen',
   collapseShared: 'Hide the resource folder list',
   expandShared: 'Show the resource folder list',
   resizeShared: 'Drag up or down to change the size. Double-click to go back to the normal size.',
   newCount: (n: number) => `${n} NEW`,
   all: 'All',
-  allHint: 'Add all files of this folder to the order, in file-name order',
+  allHint: 'Add all files of this folder to the playlist, in file-name order',
   sharedDirState: (files: number, ready: boolean) => ` ${files} files · ${ready ? 'all ready' : 'copying… wait'}`,
   sharedEmpty: 'The folder is empty.',
   sharedRetry: 'Trying again every 15 seconds…',
@@ -154,7 +187,7 @@ export const strings = {
   tooBig: 'Too many files',
   sharedTooBig:
     'This folder has more than 1000 pictures, videos, PDF and other media files, so it is not watched. Choose the folder where the team puts the files for the service.',
-  inOrder: 'in order ✓',
+  inOrder: 'in playlist ✓',
   ready: 'ready',
   waiting: 'waiting',
   prepareStates: { copying: 'copying', converting: 'converting', rendering: 'making pages' } as Record<string, string>,
@@ -168,7 +201,7 @@ export const strings = {
   addFolderHint: 'Add a folder as one item with search (for example the hymnal)',
   folderSearchPlaceholder: 'Number, title or words of the song',
   folderNoResults: 'No files found.',
-  folderChooseHint: 'Choose a file in the folder: select the folder row in the order and search.',
+  folderChooseHint: 'Choose a file in the folder: select the folder row in the playlist and search.',
   fromFolder: (name: string) => `from folder ${name}`,
   verseCount: (n: number) => (n === 1 ? '1 verse' : `${n} verses`),
   slideCount: (n: number) => (n === 1 ? '1 slide' : `${n} slides`),
@@ -183,7 +216,7 @@ export const strings = {
 
   // Selected item
   selectedLabel: 'Selected',
-  noSelection: 'Select an item in the order.',
+  noSelection: 'Select an item in the playlist.',
   goLive: 'Go live',
   markDone: 'Mark done',
   markPending: 'Mark not done',
@@ -233,11 +266,11 @@ export const strings = {
   bibleOverlay: 'Bible as overlay',
   bibleOverlayHint:
     'A verse goes over the slide or video that is live. Esc removes the verse and the slide shows again. A video keeps playing under the verse. Off: the verse replaces it.',
-  bibleBackToOrder: 'Back to Order after verse',
-  bibleBackToOrderHint: 'When the verse leaves the screens, the Order tab opens with the live item selected.',
-  orderTabHint: 'Order (Ctrl+1)',
+  bibleBackToOrder: 'Back to Playlist after verse',
+  bibleBackToOrderHint: 'When the verse leaves the screens, the Playlist tab opens with the live item selected.',
+  orderTabHint: 'Playlist (Ctrl+1)',
   libraryTabHint: 'Library (Ctrl+3)',
-  /** The key shown on each left tab, in tab order: Order, Bible, Library. */
+  /** The key shown on each left tab, in tab order: Playlist, Bible, Library. */
   leftTabKeys: ['Ctrl+1', 'Ctrl+2', 'Ctrl+3'],
   bibleEmptyMain: 'Add a Bible version first (left column).',
   noBible:
@@ -265,7 +298,7 @@ export const strings = {
   importShort: 'Import…',
   importBibleHint: 'Import another Bible version from a file',
   bibleSearchPlaceholder: 'jn 3 16 · sal 23:1-4 · buen pastor',
-  addToOrder: 'Add to order',
+  addToOrder: 'Add to playlist',
   showNow: 'Show now',
   prevChapter: 'Previous chapter',
   nextChapter: 'Next chapter',
@@ -542,7 +575,7 @@ export const strings = {
   rNext: 'Next',
   rPrevious: 'Previous',
   rNextItem: (title: string) => `Next: ${title}`,
-  rEndOfOrder: 'Next: end of the order',
+  rEndOfOrder: 'Next: end of the playlist',
   rTarget: 'Go live to',
   rTargetAll: 'All groups',
   rPage: (n: number, count: number) => `${n} / ${count}`,
@@ -553,8 +586,8 @@ export const strings = {
   rPlay: 'Play',
   rPause: 'Pause',
   rBack10: '−10 s',
-  rOrder: 'Order',
-  rEmptyOrder: 'The order is empty.',
+  rOrder: 'Playlist',
+  rEmptyOrder: 'The playlist is empty.',
   rNotReady: 'not ready',
   rGoLive: 'Go live',
   rBlack: 'Black',
@@ -569,9 +602,9 @@ export const strings = {
 }
 
 const undoKinds: Record<UndoKind, string> = {
-  add: 'add to the order',
-  remove: 'remove from the order',
-  move: 'move in the order',
+  add: 'add to the playlist',
+  remove: 'remove from the playlist',
+  move: 'move in the playlist',
   copy: 'copy from a past service'
 }
 

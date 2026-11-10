@@ -13,7 +13,7 @@ type Tab = 'audio' | 'message' | 'stage'
  * music summary and the Audio / Message / Stage buttons. A button opens its drawer above the bar;
  * a second click closes it. The drawer pushes the content up, it never covers it.
  */
-export function QuickPanel({ state, onEditHotkeys }: { state: ServiceState; onEditHotkeys: () => void }) {
+export function QuickPanel({ state, onEditHotkeys, onOpenStart }: { state: ServiceState; onEditHotkeys: () => void; onOpenStart: () => void }) {
   const [open, setOpen] = useState<Tab | null>(null)
   // A dot on a button while something from that tab is on a screen.
   const tabs: [Tab, string, boolean][] = [
@@ -31,7 +31,7 @@ export function QuickPanel({ state, onEditHotkeys }: { state: ServiceState; onEd
         </div>
       )}
       <div className="quick-bar">
-        <ServiceBar state={state} />
+        <ServiceBar state={state} onOpenStart={onOpenStart} />
         <ProgramStatus state={state} />
         <HotkeysBar state={state} onEdit={onEditHotkeys} />
         <MusicStrip />

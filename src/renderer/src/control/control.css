@@ -2631,3 +2631,155 @@
 .program-status.is-warn .mono {
   color: var(--warn);
 }
+
+/* Start screen and presets (SPEC 5.7) */
+.start-screen {
+  height: 100vh;
+  overflow-y: auto;
+  padding: 48px 24px;
+  background: var(--bg-page);
+}
+.start-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+.start-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.start-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+.start-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.start-section h2 {
+  margin: 0;
+  font-weight: 500;
+}
+.start-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.start-card:hover {
+  border-color: var(--text-2);
+}
+.start-card.is-suggested {
+  background: var(--preview-tint);
+}
+.start-card.is-default {
+  border-color: var(--preview);
+  box-shadow: 0 0 0 1px var(--preview);
+}
+.start-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  padding-right: 64px;
+}
+.start-key {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--preview);
+  border-radius: 4px;
+  color: var(--preview);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.start-badge {
+  margin-top: 4px;
+  color: var(--preview);
+  font-size: 12px;
+  font-weight: 600;
+}
+.start-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.start-preset {
+  position: relative;
+  display: flex;
+}
+.start-preset-edit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+}
+.start-recent {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-panel);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.start-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-bottom: 1px solid var(--border-panel);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.start-recent-row:last-child {
+  border-bottom: 0;
+}
+.start-recent-row:hover {
+  background: var(--bg-card);
+}
+.start-empty {
+  align-self: flex-start;
+}
+.preset-dialog {
+  width: min(480px, 92vw);
+  outline: none;
+}
+.preset-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.preset-time {
+  width: 140px;
+}
+.preset-dialog .help,
+.preset-dialog .warn {
+  margin: 0;
+}
+.preset-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}

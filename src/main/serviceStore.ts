@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { localDate } from '../shared/presets'
 import type { ProgramPart, Service, ServiceSummary } from '../shared/types'
 
 function servicesDir(): string {
@@ -15,13 +16,20 @@ function serviceFile(id: string): string {
 }
 
 /** A new service, named like "Culto · sáb 31 oct" (the date in Spanish). */
-export function createService(template: ProgramPart[] = []): Service {
+export function createService(template: ProgramPart[] = [], baseName = 'Culto'): Service {
   const now = new Date()
-  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const date = localDate(now)
   const label = now.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')
   // The program starts as a copy of the template (new ids, so edits do not change the template).
   const program = template.map((p) => ({ ...p, id: randomUUID() }))
-  return { id: randomUUID(), name: `Culto · ${label}`, date, items: [], program }
+  return { id: randomUUID(), name: `${baseName} · ${label}`, date, items: [], program }
+}
+
+/** Two new services on the same day get different names. */
+export function withUniqueName(service: Service): Service {
+  const same = listServices().filter((s) => s.name.startsWith(service.name)).length
+  if (same) service.name = `${service.name} (${same + 1})`
+  return service
 }
 
 /** All saved services, newest first. */

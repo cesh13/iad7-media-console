@@ -10,6 +10,7 @@ import type {
   OutputStatus,
   Overlays,
   PlaybackInfo,
+  PresetInfo,
   ProgramPart,
   RemoteCommand,
   RemoteSettings,
@@ -44,7 +45,8 @@ import { listServices } from './serviceStore'
 import { outputRenders } from './render'
 import * as remote from './remote'
 import * as svc from './service'
-import { createService, loadService } from './serviceStore'
+import * as presets from './presets'
+import { createService, loadService, withUniqueName } from './serviceStore'
 import { loadSettings, saveSettings } from './settings'
 import * as textStyles from './textStyles'
 import { connectUpdater, installUpdateNow, updateStatus } from './updater'
@@ -110,6 +112,7 @@ function serviceStateFull(): ServiceState {
     stageMessage: stage.stageMessage(),
     messages: stage.savedMessages(),
     programTemplate: stage.programTemplate(),
+    presets: presets.presetSummaries(),
     services: listServices(),
     library: library.libraryFolders(),
     favorites: library.favorites(),
@@ -301,13 +304,14 @@ function registerIpc(): void {
   ipcMain.handle('service:addCountdown', () => svc.addCountdown())
 
   // ---- Services ----
-  ipcMain.handle('services:new', () => {
-    const s = createService(stage.programTemplate())
-    // Two new services on the same day get different names.
-    const same = listServices().filter((x) => x.name.startsWith(s.name)).length
-    if (same) s.name = `${s.name} (${same + 1})`
-    openService(s)
+  ipcMain.handle('services:new', () => openService(withUniqueName(createService(stage.programTemplate()))))
+  ipcMain.handle('presets:start', (_e, id: string) => {
+    const s = presets.serviceFromPreset(id)
+    if (s) openService(withUniqueName(s))
   })
+  ipcMain.handle('presets:save', (_e, info: PresetInfo) => presets.saveAsPreset(info))
+  ipcMain.handle('presets:update', (_e, id: string, info: PresetInfo) => presets.updatePreset(id, info))
+  ipcMain.handle('presets:delete', (_e, id: string) => presets.deletePreset(id))
   ipcMain.handle('services:open', (_e, id: string) => {
     const s = loadService(id)
     if (s && id !== svc.currentServiceId()) openService(s)
@@ -607,6 +611,7 @@ if (!app.requestSingleInstanceLock()) {
       renderOutputs()
     })
     library.connectLibrary(settings, sendServiceState)
+    presets.connectPresets(settings, sendServiceState)
     svc.connectUsage(library.markUsed)
     svc.connectAudioHooks({
       playItem: audio.playItem,

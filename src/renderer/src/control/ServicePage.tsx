@@ -14,7 +14,7 @@ import { ScreensColumn } from './ScreensColumn'
 const api = window.mediaConsole
 
 /** Order / Library / Bible tabs (left), preview and live controls (center), screens (right). */
-export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
+export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () => void; onOpenStart: () => void }) {
   const state = useServiceState()
   const [screens] = useScreensState()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -231,6 +231,7 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
       <div className="service-bottom">
         <QuickPanel
           state={state}
+          onOpenStart={onOpenStart}
           onEditHotkeys={() => {
             setLibrary({ kind: 'favorites' })
             setLeftTab('library')

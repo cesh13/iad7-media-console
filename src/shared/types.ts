@@ -81,6 +81,8 @@ export interface Settings {
   bibleOptions?: BibleOptions
   /** The program that new services start with. */
   programTemplate?: ProgramPart[]
+  /** Saved orders that a new service can start from (SPEC 5.7). */
+  presets?: Preset[]
   remote?: RemoteSettings
 }
 
@@ -256,6 +258,28 @@ export interface ServiceSummary {
   id: string
   name: string
   date: string
+  items: number
+}
+
+/** The name of a preset and when it is usually used. */
+export interface PresetInfo {
+  name: string
+  /** Days of the week: 0 is Sunday, 6 is Saturday. */
+  days: number[]
+  /** Usual start time as HH:MM, or empty. */
+  time: string
+}
+
+/** A saved copy of an order and its program. */
+export interface Preset extends PresetInfo {
+  id: string
+  items: ServiceItem[]
+  program: ProgramPart[]
+}
+
+/** A preset for the start screen. `items` is the number of items in its order. */
+export interface PresetSummary extends PresetInfo {
+  id: string
   items: number
 }
 
@@ -578,6 +602,8 @@ export interface Service {
   startedAt?: number
   /** The parts of the service by clock time, for the Stage screen. */
   program?: ProgramPart[]
+  /** The preset this service was started from or last saved to. */
+  presetId?: string
 }
 
 /** One part of the service program, for example 9:10 Prayer (Elder). It ends when the next part starts. */
@@ -681,6 +707,7 @@ export interface ServiceState {
   stageMessage: string | null
   messages: SavedMessage[]
   programTemplate: ProgramPart[]
+  presets: PresetSummary[]
   services: ServiceSummary[]
   library: LibraryFolder[]
   favorites: Favorite[]
@@ -810,6 +837,13 @@ export interface MediaConsoleApi {
   newService(): Promise<void>
   openService(serviceId: string): Promise<void>
   renameService(name: string): Promise<void>
+  /** Make a new service from this preset and open it. */
+  startPreset(presetId: string): Promise<void>
+  /** Save this service's order and program as a preset. The same name replaces that preset. */
+  saveAsPreset(info: PresetInfo): Promise<void>
+  /** Change the name, days or time of a preset. */
+  updatePreset(presetId: string, info: PresetInfo): Promise<void>
+  deletePreset(presetId: string): Promise<void>
   /** Replace the program of this service. */
   setProgram(parts: ProgramPart[]): Promise<void>
   /** Save this service's program as the template for new services. */

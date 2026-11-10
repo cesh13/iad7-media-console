@@ -204,7 +204,7 @@ function setStatus(itemId: string, status: ItemStatus): void {
 /** The service state without the stage and library parts (index.ts adds them). */
 export function serviceState(): Omit<
   ServiceState,
-  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'services' | 'library' | 'favorites' | 'textStyles' | 'bibleOptions'
+  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'presets' | 'services' | 'library' | 'favorites' | 'textStyles' | 'bibleOptions'
 > {
   refreshFolders()
   const next = nextIndex()
@@ -809,18 +809,34 @@ export function setProgram(parts: ProgramPart[]): void {
   changed()
 }
 
-/** Copy items of a past service to the end of this one: all "not done"; folders keep the folder, not the chosen file (SPEC 5.2). */
+/** A copy of an item to use again: "not done"; a folder keeps the folder, not the chosen file (SPEC 5.2). */
+export function freshItem(old: ServiceItem): ServiceItem {
+  return {
+    ...structuredClone(old),
+    id: randomUUID(),
+    status: 'pending',
+    child: undefined,
+    folderChoice: undefined,
+    cacheProgress: undefined
+  }
+}
+
+/** A clean copy of this order, to save in a preset. */
+export function orderSnapshot(): ServiceItem[] {
+  return service.items.map(freshItem)
+}
+
+/** Remember the preset of this service, so "Save as preset" can offer to update it. */
+export function setPresetId(id: string): void {
+  service.presetId = id
+  changed()
+}
+
+/** Copy items of a past service to the end of this one. */
 export function copyOrder(from: Service): void {
   if (from.items.length) saveUndo('copy')
   for (const old of from.items) {
-    const item: ServiceItem = {
-      ...structuredClone(old),
-      id: randomUUID(),
-      status: 'pending',
-      child: undefined,
-      folderChoice: undefined,
-      cacheProgress: undefined
-    }
+    const item = freshItem(old)
     service.items.push(item)
     if (item.type === 'folder') openFolderIndex(item.path)
     else if (needsFile(item)) restoreItem(item)

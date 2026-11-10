@@ -110,6 +110,8 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 - Buttons: **Logo**, **Clear text**, **Black screen (all)**.
 
 ### 5.2 Left panel: Order / Bible / Library tabs
+
+The Order tab is labeled "Playlist" in the app. This document and the code still call it the order.
 - Tab order: Order, Bible, Library. **Ctrl+1**, **Ctrl+2**, **Ctrl+3** open them
   (from anywhere, also from an input). Each tab shows its key next to its name.
 
@@ -272,6 +274,14 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
   messages. Choose target group.
 - **Stage tab:** messages only for the Stage screen ("5 min", "Wrap up", "Video
   ready", free text). Participant countdown controls (see 7).
+
+### 5.7 Start screen and presets
+- The start screen shows each time the app opens, and from "Start screen" in the bottom bar. It shows: Continue (the last service), presets, recent services, Empty service. Output windows stay on the idle screen while it is open.
+- "Save as preset" in the bottom bar saves a copy of the order and the program, with a name, usual days (one or more) and a usual time. The same name replaces that preset. A service started from a preset opens this window with that preset filled in.
+- Starting a preset always makes a new service. Items start as not done, and a folder keeps the folder but not the chosen file. Changes in that service never change the preset.
+- Suggested preset: among the presets for today, the one with the usual time closest to now.
+- Enter continues the last service if it is from today, if nothing is suggested, or if something is on the screens. Otherwise Enter starts the suggested preset.
+- Screens and groups are not part of a preset.
 
 ## 6. Preview by item type
 
