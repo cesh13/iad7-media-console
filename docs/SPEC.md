@@ -188,11 +188,12 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 ### 5.3 Center: Preview
 - Shows the selected item. Nothing goes on screens until **Go live**.
 - "Send to" selector: a group or all screens.
-- Keys: ← → slides or verses (in the Bible tab also ↓ ↑ while text is live), Space next item, Esc twice (within 1.5 s) clear all.
+- Keys: ← → slides or verses (also ↓ ↑ while slides are live in the target, and in the Bible tab while text is live), Space next item, Esc twice (within 1.5 s) clear all.
   Presenter clickers: Page Down / Page Up = next / previous slide, B or . =
   black screen on/off, Shift+F5 is ignored. F5 stays hotkey 5, so the
   slideshow button of a clicker can trigger it. One Esc alone does not blank
   the screens: it only removes a Bible verse that is live (see 5.5).
+- A key press after the last slide takes the slides off the screens and shows the idle screen. It never starts the next item, so a clicker cannot start a song by accident. Slides with loop start again. Auto-advance still goes to the next item.
 - Item notes and options (auto-mark done, loop, auto-advance).
 - Layout changes by item type, see section 6.
 

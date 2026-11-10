@@ -35,6 +35,9 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
   const blackOn = !!state?.overlays.black
   const textLive = !!state?.groups.some((g) => g.live.text)
   const verseLive = !!state?.groups.some((g) => g.live.text?.ref)
+  const slidesLive = !!state?.groups.some(
+    (g) => (state.target === 'all' || g.config.id === state.target) && g.live.content?.type === 'slides'
+  )
 
   // "Back to Order" option: when a verse leaves the screens, show the Order tab with the live item selected.
   const verseWasLive = useRef(false)
@@ -59,7 +62,8 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
   }, [escArmed])
 
   // Keys: Space next item, Esc Esc clear, ← → and Page Up/Down slides, B or . black,
-  // ↑ ↓ select, Enter go live. Page Up/Down, B and . are what presenter clickers send.
+  // ↑ ↓ select (while slides are live in the target: previous or next slide), Enter go live.
+  // Page Up/Down, B and . are what presenter clickers send. Some clickers send ↑ ↓ instead.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -123,8 +127,9 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
         void api.setOverlay('black', !blackOn)
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
-        // In the Bible tab with text live, ↓ ↑ go to the next or previous verse, like → ←.
-        if (leftTab === 'bible' && textLive) return void api.pageStep(e.key === 'ArrowDown' ? 1 : -1)
+        // In the Bible tab with text live, or while slides are live in the target,
+        // ↓ ↑ go to the next or previous verse or slide, like → ←.
+        if ((leftTab === 'bible' && textLive) || slidesLive) return void api.pageStep(e.key === 'ArrowDown' ? 1 : -1)
         const index = items.findIndex((i) => i.id === selectedId)
         const nextIndex = e.key === 'ArrowDown' ? Math.min(items.length - 1, index + 1) : Math.max(0, index - 1)
         if (items[nextIndex]) setSelectedId(items[nextIndex].id)
@@ -152,7 +157,7 @@ export function ServicePage({ onOpenScreens }: { onOpenScreens: () => void }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [items, selectedId, blackOn, leftTab, textLive, verseLive, bible.ref])
+  }, [items, selectedId, blackOn, leftTab, textLive, verseLive, slidesLive, bible.ref])
 
   if (!state) return null
 

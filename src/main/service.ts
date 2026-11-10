@@ -588,9 +588,11 @@ function clampPage(item: ServiceItem, page: number): number {
 
 /**
  * Move the slides of one take forward or back. After the last page: start
- * again (loop), or go to the next item. Before the first page: stay.
+ * again (loop), or do the `atEnd` action. Before the first page: stay.
+ * A person pressing a key uses 'idle', so a clicker can never start the next
+ * item (a song, for example). Only the auto-advance timer uses 'next'.
  */
-function stepTake(t: number, delta: number): void {
+function stepTake(t: number, delta: number, atEnd: 'next' | 'idle' = 'next'): void {
   const groupIds = groupsWithTake(t)
   const content = groupIds.length ? live.get(groupIds[0])!.content : null
   const item = content && findItem(content.itemId)
@@ -598,7 +600,7 @@ function stepTake(t: number, delta: number): void {
   const count = item.pageUrls?.length ?? 1
   let page = (content.page ?? 0) + delta
   if (page >= count) {
-    if (!item.settings.loop) return advanceFrom(t)
+    if (!item.settings.loop) return atEnd === 'next' ? advanceFrom(t) : clearGroups(groupIds, true, 'content')
     page = 0
   }
   page = Math.max(0, page)
@@ -623,7 +625,7 @@ export function pageStep(delta: number): void {
       .filter((c) => c?.type === 'slides')
       .map((c) => c!.take)
   )
-  for (const t of takes) stepTake(t, delta)
+  for (const t of takes) stepTake(t, delta, 'idle')
 }
 
 /** Show one page. If the slides are not live in the target, they go live at that page. */

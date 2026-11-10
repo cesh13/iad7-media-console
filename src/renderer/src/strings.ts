@@ -223,7 +223,7 @@ export const strings = {
   prevPage: 'Previous page',
   nextPage: 'Next page',
   pageOf: (n: number, total: number) => `page ${n} of ${total}`,
-  slidesHelp: 'Click a page to preview it. Double-click: show it live. ← → keys change the live page.',
+  slidesHelp: 'Click a page to preview it. Double-click: show it live. Arrow keys change the live page.',
   autoAdvanceEvery: 'Next page every',
   loopSlides: 'Loop (after the last page, start again)',
 
