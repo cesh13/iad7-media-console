@@ -1,5 +1,13 @@
 # Changes
 
+## 1.4.0 – 2026-11-10
+
+- New start screen when the app opens: continue the last service, start a new service from a preset, open a recent service, or start an empty one. "Start screen" in the bottom bar opens it again.
+- Presets: "Save as preset" in the bottom bar saves the playlist and the program times with a name, the usual days (for example Monday and Wednesday) and the usual time. The app suggests the preset for today with the closest time. Enter continues the last service if it is from today, and otherwise starts the suggested preset.
+- The Order tab is now called "Playlist".
+- Presenter clickers: while slides are live, ↓ and ↑ go to the next and previous slide (before, they only moved the selection in the playlist).
+- After the last slide, the next slide key now shows the idle screen. It no longer starts the next item, so a clicker cannot start a song by accident. Slides with Loop or Auto-advance work as before.
+
 ## 1.3.1 – 2026-11-04
 
 - Bible tab: the verse list now scrolls by itself to keep the selected verse in view, for example with the arrow keys, a typed number or a search.
