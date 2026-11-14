@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Countdown and image preview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#101215}button,select,input{font-family:inherit}</style>
+</helmet>
+<div style="width: 960px; height: 640px; box-sizing: border-box; padding: 16px; background: #101215; color: #E8E6E1; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+
+<section aria-label="Countdown" style="display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #16191D; border: 1px solid #2A2E35; border-radius: 8px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="padding: 3px 8px; background: #5BA4FF; color: #0B1420; font-size: 11px; font-weight: 700; border-radius: 3px;">PREVIEW</span>
+<h1 style="margin: 0; font-size: 16px; font-weight: 600;">Countdown</h1>
+</div>
+<div style="aspect-ratio: 16 / 9; background: #0B0D10; border: 2px solid #5BA4FF; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+<span style="color: #C9CDD3; font-size: 14px;">El culto inicia en</span>
+<span style="color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 64px; font-weight: 500;">04:12</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="radio" name="cd"> Duration <input type="text" value="5:00" style="width: 64px; height: 30px; padding: 0 8px; background: #0F1114; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-family: 'IBM Plex Mono', monospace;"></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="radio" name="cd" checked="checked"> Until clock time <input type="text" value="10:00" style="width: 64px; height: 30px; padding: 0 8px; background: #0F1114; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-family: 'IBM Plex Mono', monospace;"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; color: #9AA0A8; font-size: 12px;">Text above<input type="text" value="El culto inicia en" style="height: 32px; padding: 0 8px; background: #0F1114; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px;"></label>
+<label style="display: flex; align-items: center; justify-content: space-between; color: #C9CDD3;">At 0:00<select style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>Go to next item</option><option>Show logo</option><option>Stay at 0:00</option></select></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="checkbox" checked="checked"> Also show on Stage screen</label>
+</div>
+</section>
+
+<section aria-label="Image" style="display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #16191D; border: 1px solid #2A2E35; border-radius: 8px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="padding: 3px 8px; background: #5BA4FF; color: #0B1420; font-size: 11px; font-weight: 700; border-radius: 3px;">PREVIEW</span>
+<h1 style="margin: 0; font-size: 16px; font-weight: 600;">Foto bautismo.jpg</h1>
+<span style="color: #9AA0A8; font-size: 12px;">3024×4032 (vertical)</span>
+</div>
+<div style="aspect-ratio: 16 / 9; background: #000000; border: 2px solid #5BA4FF; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+<div style="height: 100%; aspect-ratio: 3 / 4; background: #3B4A5A; display: flex; align-items: center; justify-content: center; color: #E8E6E1; font-size: 12px; text-align: center; padding: 8px; box-sizing: border-box;">[Photo]</div>
+</div>
+<span style="color: #868D97; font-size: 12px;">The photo is vertical, so "Fit" adds black bars at the sides.</span>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span style="color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;">Fit</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+<button type="button" style="height: 34px; background: #17263A; color: #FFFFFF; border: 1px solid #5BA4FF; border-radius: 4px; font-size: 12px; font-weight: 600;">Fit</button>
+<button type="button" style="height: 34px; background: #1F2328; color: #C9CDD3; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;">Fill (crop)</button>
+<button type="button" style="height: 34px; background: #1F2328; color: #C9CDD3; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;">Blur sides</button>
+</div>
+<label style="display: flex; align-items: center; justify-content: space-between; color: #C9CDD3;">Background<select style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>Black</option><option>Blurred copy</option></select></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="checkbox"> Next item after <input type="text" value="10 s" style="width: 56px; height: 30px; padding: 0 8px; background: #0F1114; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px;"></label>
+<label style="display: flex; align-items: center; gap: 8px; color: #C9CDD3;"><input type="checkbox" checked="checked"> Rotate by photo info (EXIF)</label>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

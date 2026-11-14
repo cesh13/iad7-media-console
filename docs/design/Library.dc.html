@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#101215}button,select,input{font-family:inherit}</style>
+</helmet>
+<div style="width: 1440px; height: 860px; box-sizing: border-box; background: #101215; color: #E8E6E1; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: flex;">
+
+<!-- LEFT: LIBRARY TREE -->
+<section aria-label="Library folders" style="flex: 0 0 320px; border-right: 1px solid #2A2E35; background: #16191D; display: flex; flex-direction: column;">
+<div style="display: flex; border-bottom: 1px solid #2A2E35;">
+<button type="button" style="flex: 1; height: 42px; background: transparent; color: #9AA0A8; border: 0; border-bottom: 2px solid transparent; font-size: 13px; font-weight: 500;">Order</button>
+<button type="button" style="flex: 1; height: 42px; background: transparent; color: #E8E6E1; border: 0; border-bottom: 2px solid #5BA4FF; font-size: 13px; font-weight: 600;">Library</button>
+</div>
+<div style="padding: 12px 14px 6px;">
+<label for="ls" style="position: absolute; left: -9999px;">Search library</label>
+<input id="ls" type="text" placeholder="Search all files…" style="width: 100%; box-sizing: border-box; height: 36px; padding: 0 12px; background: #0F1114; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 6px; font-size: 13px;">
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 6px 8px;">
+<div style="padding: 8px 8px 4px; color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;">Library folders</div>
+<sc-for list="{{roots}}" as="r" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; background: {{r.bg}};">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E2B35B" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+<span style="flex: 1;">{{r.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9AA0A8;">{{r.count}}</span>
+</div>
+</sc-for>
+<div style="padding: 14px 8px 4px; color: #868D97; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;">Past services</div>
+<sc-for list="{{past}}" as="p" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA0A8" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>
+<span style="flex: 1;">{{p.name}}</span>
+<span style="font-size: 12px; color: #9AA0A8;">{{p.items}}</span>
+</div>
+</sc-for>
+</div>
+<div style="margin-top: auto; padding: 10px 14px; border-top: 1px solid #2A2E35;">
+<button type="button" style="width: 100%; height: 36px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 6px; font-size: 13px;">+ Add library folder</button>
+</div>
+</section>
+
+<!-- CENTER: FILE GRID -->
+<section aria-label="Files" style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
+<nav aria-label="Folder path" style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
+<a href="#lib" style="color: #9AA0A8; text-decoration: none;">Library</a>
+<span style="color: #5A6069;">/</span>
+<a href="#vid" style="color: #9AA0A8; text-decoration: none;">Videos</a>
+<span style="color: #5A6069;">/</span>
+<span style="font-weight: 600;">Misioneros 2026</span>
+<div style="flex: 1;"></div>
+<span style="color: #9AA0A8; font-size: 12px;">10 files · 1.8 GB</span>
+</nav>
+<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+<button type="button" style="height: 30px; padding: 0 12px; background: {{f.bg}}; color: {{f.fg}}; border: 1px solid {{f.bd}}; border-radius: 15px; font-size: 12px;">{{f.label}}</button>
+</sc-for>
+<div style="flex: 1;"></div>
+<label for="sort" style="color: #9AA0A8; font-size: 12px;">Sort</label>
+<select id="sort" style="height: 30px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;"><option>Name</option><option>Last used</option><option>Date added</option></select>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #1C1F24; border: 1px solid #2A2E35; border-radius: 6px;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E2B35B" stroke-width="1.8" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+<span style="font-weight: 600;">Testimonios/</span>
+<span style="color: #9AA0A8; font-size: 12px;">4 files · double-click to open</span>
+<div style="flex: 1;"></div>
+<button type="button" style="height: 30px; padding: 0 10px; background: #252A31; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;">+ Add all to order</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+<sc-for list="{{files}}" as="it" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: {{it.cardBg}}; border: {{it.cardBd}}; border-radius: 6px;">
+<div style="aspect-ratio: 16 / 9; background: {{it.thumb}}; border-radius: 4px; display: flex; align-items: flex-end; justify-content: space-between; padding: 6px; box-sizing: border-box;">
+<span style="padding: 1px 5px; background: #000000; color: #FFFFFF; font-size: 10px; font-weight: 700; border-radius: 3px;">{{it.type}}</span>
+<span style="padding: 1px 5px; background: #000000; color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 10px; border-radius: 3px;">{{it.len}}</span>
+</div>
+<span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{it.name}}</span>
+<span style="font-size: 11px; color: #9AA0A8;">{{it.used}}</span>
+</div>
+</sc-for>
+</div>
+<span style="color: #868D97; font-size: 12px;">Drag a file to the Order tab, or press Enter to add it after the selected item.</span>
+</section>
+
+<!-- RIGHT: DETAILS -->
+<section aria-label="File details" style="flex: 0 0 320px; border-left: 1px solid #2A2E35; background: #16191D; display: flex; flex-direction: column; gap: 12px; padding: 16px;">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600;">Informe misionero · Perú.mp4</h2>
+<div style="aspect-ratio: 16 / 9; background: #3B4A5A; border: 2px solid #5BA4FF; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M10 8l6 4-6 4z"></path></svg>
+</div>
+<span style="color: #868D97; font-size: 12px;">Click the picture to play a muted test here. It does not go on the screens.</span>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; font-size: 12px;">
+<dt style="color: #9AA0A8;">Length</dt><dd style="margin: 0;">3:40</dd>
+<dt style="color: #9AA0A8;">Size</dt><dd style="margin: 0;">1920×1080 · 212 MB</dd>
+<dt style="color: #9AA0A8;">Added</dt><dd style="margin: 0;">5 Oct 2026</dd>
+<dt style="color: #9AA0A8;">Last used</dt><dd style="margin: 0;">Never</dd>
+<dt style="color: #9AA0A8;">Status</dt><dd style="margin: 0; color: #4CC38A;">Plays OK</dd>
+</dl>
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+<button type="button" style="height: 40px; background: #E8E6E1; color: #101215; border: 0; border-radius: 6px; font-size: 13px; font-weight: 700;">Add to order</button>
+<button type="button" style="height: 40px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 6px; font-size: 13px;">Open in preview</button>
+<button type="button" style="height: 40px; background: #1F2328; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 6px; font-size: 13px;">☆ Add to bookmarks</button>
+</div>
+<div style="margin-top: auto; padding: 10px; background: #1C1F24; border: 1px solid #2A2E35; border-radius: 6px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-weight: 600;">Reuse a past service</span>
+<span style="font-size: 12px; color: #9AA0A8;">Select "Culto 24 Oct" on the left, then copy its order. Change only what is new.</span>
+<button type="button" style="height: 34px; background: #252A31; color: #E8E6E1; border: 1px solid #3A3F47; border-radius: 4px; font-size: 12px;">Copy order to this service</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+renderVals() {
+const sel = '#17263A';
+const roots = [
+{ name: 'Himnario (letras)', count: '613' },
+{ name: 'Videos', count: '84', bg: sel },
+{ name: 'Fondos (backgrounds)', count: '32' },
+{ name: 'Anuncios', count: '12' },
+{ name: 'Música de fondo', count: '45' },
+{ name: 'Compartida (shared)', count: '6' }
+].map(r => ({ ...r, bg: r.bg || 'transparent' }));
+const past = [
+{ name: 'Culto 24 Oct', items: '11 items' },
+{ name: 'Culto 17 Oct', items: '10 items' },
+{ name: 'Semana de oración', items: '7 items' }
+];
+const filters = ['All', 'Video', 'Slides', 'Songs', 'Images', 'Audio'].map((label, i) => ({
+label, bg: i === 1 ? '#17263A' : '#1F2328', fg: i === 1 ? '#FFFFFF' : '#C9CDD3', bd: i === 1 ? '#5BA4FF' : '#3A3F47'
+}));
+const files = [
+{ name: 'Informe misionero · Perú.mp4', type: 'VIDEO', len: '3:40', used: 'Never used', thumb: '#3B4A5A', sel: true },
+{ name: 'Informe misionero · Kenia.mp4', type: 'VIDEO', len: '4:05', used: 'Used 12 Oct', thumb: '#4A3F33' },
+{ name: 'Informe misionero · India.mp4', type: 'VIDEO', len: '3:58', used: 'Used 5 Oct', thumb: '#2F4436' },
+{ name: 'Ofrenda misionera.mp4', type: 'VIDEO', len: '1:30', used: 'Used 6 times', thumb: '#3A3350' },
+{ name: 'Mapa de misiones.jpg', type: 'IMAGE', len: '—', used: 'Used 24 Oct', thumb: '#2B3A4A' },
+{ name: 'Informe trimestral.pptx', type: 'SLIDES', len: '14', used: 'Never used', thumb: '#E9E3D6' },
+{ name: 'Himno misionero.mp4', type: 'VIDEO', len: '3:12', used: 'Used 17 Oct', thumb: '#40363A' },
+{ name: 'Intro misiones.mp4', type: 'VIDEO', len: '0:20', used: 'Used 9 times', thumb: '#33404A' }
+].map(f => ({ ...f, cardBg: f.sel ? '#17263A' : '#16191D', cardBd: f.sel ? '1px solid #5BA4FF' : '1px solid #2A2E35' }));
+return { roots, past, filters, files };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+*.log
+src/renderer/public/pdfjs/
+build/release-notes.md
+
+# The old Himnario Adventista program (reference only, about 3.8 GB).
+Himnario NUEVA VERSION PC/
+
+# The zip of the app this project started from.
+iad7-media-console-main.zip
+
+# Hymnal media (pictures and music). Copied by hand, never uploaded.
+himnario/*
+!himnario/README.md
