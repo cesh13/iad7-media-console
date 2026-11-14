@@ -1,5 +1,11 @@
 # Changes
 
+## 1.5.0 – 2026-11-14
+
+- Presenter clicker in the background: on the Setup tab, click "Pair clicker" and press the Next button on the clicker. Then its next, previous and black screen buttons work even when another program (for example Chrome) is in front. Only the clicker does this; the keyboard keeps working as normal. "Last button" shows each press, so you can test it.
+- Stage screen: a new Stage / Full screen switch on the Stage card. Full screen shows what the audience sees on the whole stage screen, for example a lyric video for the singers. Stage messages still show on top.
+- The Screens tab is now called "Setup".
+
 ## 1.4.0 – 2026-11-10
 
 - New start screen when the app opens: continue the last service, start a new service from a preset, open a recent service, or start an empty one. "Start screen" in the bottom bar opens it again.
