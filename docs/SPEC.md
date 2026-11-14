@@ -105,7 +105,7 @@ interface Service {
 See `docs/design/Main.dc.html`. Dark theme (dim room).
 
 ### 5.1 Top bar
-- Left: Service / Screens tabs. Center: app name. Right: clock and elapsed
+- Left: Service / Setup tabs (Setup was called Screens before). Center: app name. Right: clock and elapsed
   time, the "No output screen" chip when it applies, and the buttons.
 - Buttons: **Logo**, **Clear text**, **Black screen (all)**.
 
@@ -206,7 +206,7 @@ The Order tab is labeled "Playlist" in the app. This document and the code still
 - New screens appear at the bottom with "add to a group".
 - When no output screen is connected, a yellow box at the top says "Nothing
   goes to a screen", tells why (none set up, or none connected) and has a button
-  to open the Screens tab. The top bar also shows a "No output screen" chip.
+  to open the Setup tab. The top bar also shows a "No output screen" chip.
 - "Edit groups" opens the group settings (screens per group, idle screen).
 
 ### 5.5 Bible tab
@@ -283,6 +283,15 @@ The Order tab is labeled "Playlist" in the app. This document and the code still
 - Enter continues the last service if it is from today, if nothing is suggested, or if something is on the screens. Otherwise Enter starts the suggested preset.
 - Screens and groups are not part of a preset.
 
+### 5.8 Presenter clicker in the background (Windows)
+- Setup tab, "Presenter clicker": "Pair clicker", then press the Next button on the clicker. The app remembers the device by its USB maker and model (VID and PID), so another USB port works too. Only a next or previous key pairs, and a key typed by a program never pairs.
+- When Media Console is not in front, or another tab than Service is shown, the paired clicker still works: next and previous (→ ↓ Page Down, ← ↑ Page Up) step the slides or verse in the target, and B or . switches the black screen. Other keys from the clicker are ignored. Nothing can start an item from the playlist or clear the screens.
+- When the Service page is in front, the clicker works through the normal keys (5.3), so a press never counts twice.
+- Keys from other devices (the keyboard) are never used in the background. Windows still gives the clicker key to the program in front too.
+- "Last button" shows the last press of the paired clicker, to test it. If a keyboard arrow also shows there, the keyboard and clicker share a receiver and cannot be told apart.
+- "Works when another program is in front" turns the background part off. "Forget" removes the pairing.
+- How: Windows raw input (RegisterRawInputDevices with RIDEV_INPUTSINK on the control window), called through koffi. MEDIA_CONSOLE_CLICKER_LOG=1 prints every key with its device.
+
 ## 6. Preview by item type
 
 See `docs/design/Preview-*.dc.html`.
@@ -320,6 +329,8 @@ See `docs/design/Preview-*.dc.html`.
 - The program is edited in the Stage drawer and saved with the service. "Save
   as template" keeps it for new services; "Use template" copies it into this
   service. Each stage group has a "Show the program times" option (default on).
+
+- Layout switch on the Stage card in the Screens column: **Stage** (the layout above) or **Full screen** (only what the audience sees, on the whole screen, for example a lyric video for the singers). Stage messages show on top in both. The choice is saved with the group.
 
 ## 8. Idle screen (instead of the desktop wallpaper)
 
@@ -360,7 +371,7 @@ A second person can control the service from a phone, a tablet or another
 computer on the same network. The remote is a web page served by the app. No
 app is installed on the remote device.
 
-**Setup (Screens page, "Remote control" section)**
+**Setup (Setup tab, "Remote control" section)**
 - Off by default. A switch turns it on.
 - A PIN of 4 to 8 digits. The app makes a random 4-digit PIN the first time.
   Changing the PIN signs out all remotes.

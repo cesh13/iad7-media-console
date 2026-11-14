@@ -141,6 +141,17 @@ function GroupCard({ group, state, screens }: { group: GroupView; state: Service
           {strings.clear}
         </button>
       </div>
+      {config.stageView && (
+        // Stage screens: the stage layout, or what the audience sees on the whole screen (for example a lyric video).
+        <div className="chips stage-layout" title={strings.stageLayoutHint}>
+          <button className={config.stageFull ? 'chip' : 'chip is-on'} onClick={() => void api.updateGroup(config.id, { stageFull: false })}>
+            {strings.stageLayoutStage}
+          </button>
+          <button className={config.stageFull ? 'chip is-on' : 'chip'} onClick={() => void api.updateGroup(config.id, { stageFull: true })}>
+            {strings.stageLayoutFull}
+          </button>
+        </div>
+      )}
       <div className="mini">
         <GroupLiveView group={group} state={state} />
       </div>

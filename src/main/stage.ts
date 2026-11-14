@@ -110,6 +110,7 @@ export function stageRender(group: GroupConfig, groups: GroupConfig[]): StageRen
     .map((g) => svc.groupLive(g.id).content)
     .find((c) => c?.type === 'countdown' && c.settings.showOnStage && c.endsAt)
   return {
+    full: !!group.stageFull,
     timer,
     countdown: countdown ? { label: countdown.settings.textAbove || info.countdownTitle || 'Countdown', endsAt: countdown.endsAt! } : null,
     message,

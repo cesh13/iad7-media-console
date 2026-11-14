@@ -66,7 +66,7 @@ export function removeGroup(groupId: string): void {
   changed()
 }
 
-export function updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView' | 'showProgram'>>): void {
+export function updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView' | 'showProgram' | 'stageFull'>>): void {
   const g = group(groupId)
   if (!g) return
   if (change.name !== undefined && change.name.trim()) g.name = change.name.trim()
@@ -74,6 +74,7 @@ export function updateGroup(groupId: string, change: Partial<Pick<GroupConfig, '
   if (change.idleInterval !== undefined && change.idleInterval >= 1) g.idleInterval = change.idleInterval
   if (change.stageView !== undefined) g.stageView = change.stageView
   if (change.showProgram !== undefined) g.showProgram = change.showProgram
+  if (change.stageFull !== undefined) g.stageFull = change.stageFull
   changed()
 }
 

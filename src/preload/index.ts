@@ -6,6 +6,7 @@ import type {
   OutputRender,
   PdfJob,
   RemoteStatus,
+  ClickerStatus,
   ScreensState,
   ServiceState,
   SharedState,
@@ -110,6 +111,15 @@ const api: MediaConsoleApi = {
   getRemote: () => invoke('remote:get'),
   onRemoteChanged: (cb) => listen<RemoteStatus>('remote:changed', cb),
   updateRemote: (change) => invoke('remote:update', change),
+
+  // Presenter clicker
+  getClicker: () => invoke('clicker:get'),
+  onClickerChanged: (cb) => listen<ClickerStatus>('clicker:changed', cb),
+  pairClicker: () => invoke('clicker:pair'),
+  cancelClickerPairing: () => invoke('clicker:cancelPairing'),
+  forgetClicker: () => invoke('clicker:forget'),
+  setClickerEnabled: (enabled) => invoke('clicker:setEnabled', enabled),
+  setLiveKeysActive: (active) => invoke('clicker:liveKeys', active),
 
   // Updates
   getUpdate: () => invoke('update:get'),

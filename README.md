@@ -58,7 +58,7 @@ before you start the installed app on the same computer.
 ## First setup on the church computer
 
 1. In Windows display settings, choose **Extend** for all screens (not Duplicate).
-2. Open the **Screens** tab. Give a name to each output screen (for example
+2. Open the **Setup** tab. Give a name to each output screen (for example
    "Projector", "Participant monitor"). The control monitor needs no name.
    Use **Test all screens** to see which screen is which (Esc closes a test window).
 3. In **Groups**: put the projector in **Main** and the participant monitor in
@@ -93,6 +93,17 @@ before you start the installed app on the same computer.
 **+ Text** in the playlist adds a song, chorus or announcement that you type in the
 app. An empty line starts a new screen. The text of a .txt song can be changed in
 the preview too (only in this service, not in the file).
+
+## Presenter clicker in the background
+
+In **Setup → Presenter clicker**, click **Pair clicker** and press the Next
+button on the clicker. Then the clicker changes slides and verses even when
+another program (for example Chrome) is in front. Only the clicker does this:
+the keyboard keeps working as normal. Windows still gives the key to the program
+in front too, so Chrome may scroll a little. Windows only.
+
+To see every key Windows reports and the device it came from, start the app
+with `MEDIA_CONSOLE_CLICKER_LOG=1`.
 
 ## Where the data is
 

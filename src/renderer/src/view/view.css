@@ -304,3 +304,15 @@
 .stage-program.is-over .stage-program-left {
   color: #ff5a5f;
 }
+
+/* Stage screen, Full screen layout: what the audience sees, on the whole screen. */
+.stage-full {
+  display: block;
+}
+.stage-message-over {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+}

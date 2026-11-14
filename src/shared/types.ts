@@ -55,6 +55,8 @@ export interface GroupConfig {
   stageView?: boolean
   /** Stage view only: show the program of the service (now, time left, next). Default on. */
   showProgram?: boolean
+  /** Stage view only: show what the audience sees on the whole screen (for example a lyric video), instead of the stage layout. */
+  stageFull?: boolean
 }
 
 /** A lower-third message the team saved (name and role, notices). */
@@ -84,6 +86,8 @@ export interface Settings {
   /** Saved orders that a new service can start from (SPEC 5.7). */
   presets?: Preset[]
   remote?: RemoteSettings
+  /** The paired presenter clicker (SPEC 5.8). */
+  clicker?: ClickerSettings
 }
 
 /** How Bible verses go on the screens (SPEC 5.5). */
@@ -92,6 +96,29 @@ export interface BibleOptions {
   overlay: boolean
   /** After a verse is cleared, open the Order tab and select the live item. */
   backToOrder: boolean
+}
+
+// ---- Presenter clicker in the background (SPEC 5.8) ----
+
+export type ClickerAction = 'next' | 'previous' | 'black'
+
+export interface ClickerSettings {
+  /** USB maker and model, for example 046d:c538. */
+  deviceKey: string
+  name: string
+  /** Off: the clicker works only when Media Console is in front. */
+  enabled: boolean
+}
+
+export interface ClickerStatus {
+  /** False on macOS and Linux, or when Windows did not allow it (see error). */
+  supported: boolean
+  error: string | null
+  /** Waiting for a button press on the clicker. */
+  pairing: boolean
+  paired: { name: string; enabled: boolean } | null
+  /** The last button pressed on the paired clicker, to test it. "other": a button the app does not use. */
+  lastPress: { action: ClickerAction | 'other'; at: number } | null
 }
 
 // ---- Remote control (SPEC section 11) ----
@@ -298,6 +325,8 @@ export interface StageTimer {
 }
 
 export interface StageRender {
+  /** Full screen: only what the audience sees, with Stage messages on top. */
+  full: boolean
   timer: StageTimer
   /** A countdown item that is live and set to "also show on Stage". */
   countdown: { label: string; endsAt: number } | null
@@ -754,7 +783,7 @@ export interface MediaConsoleApi {
   onTestInfo(callback: (info: TestInfo) => void): () => void
   addGroup(name: string): Promise<void>
   removeGroup(groupId: string): Promise<void>
-  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView' | 'showProgram'>>): Promise<void>
+  updateGroup(groupId: string, change: Partial<Pick<GroupConfig, 'name' | 'idle' | 'idleInterval' | 'stageView' | 'showProgram' | 'stageFull'>>): Promise<void>
   /** Put an output in a group (null: no group). An output is in one group at most. */
   assignOutput(outputId: string, groupId: string | null): Promise<void>
   /** Show a file dialog and set the group's idle files. */
@@ -928,6 +957,17 @@ export interface MediaConsoleApi {
   onRemoteChanged(callback: (status: RemoteStatus) => void): () => void
   /** Turn the remote on or off, or change the PIN or the port. */
   updateRemote(change: Partial<RemoteSettings>): Promise<RemoteStatus>
+
+  // Presenter clicker
+  getClicker(): Promise<ClickerStatus>
+  onClickerChanged(callback: (status: ClickerStatus) => void): () => void
+  /** Wait for the next or previous button of the clicker, and remember that device. */
+  pairClicker(): Promise<void>
+  cancelClickerPairing(): Promise<void>
+  forgetClicker(): Promise<void>
+  setClickerEnabled(enabled: boolean): Promise<void>
+  /** The Service page is shown and handles the keys itself while the window is in front. */
+  setLiveKeysActive(active: boolean): Promise<void>
 
   // Updates
   getUpdate(): Promise<UpdateStatus>

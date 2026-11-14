@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { strings } from '../strings'
 import { useScreensState, useServiceState, useUpdateStatus } from './hooks'
 import { hasConnectedOutput } from './ScreensColumn'
@@ -19,6 +19,11 @@ export function App() {
   const overlays = state?.overlays
   // The start screen shows each time the app opens. It replaces the main page, so the live keys do not work under it.
   const [startOpen, setStartOpen] = useState(true)
+  // While the Service page is shown, its own keys move the slides when this window is in front.
+  // Otherwise the main process acts on the paired clicker (SPEC 5.8).
+  useEffect(() => {
+    void api.setLiveKeysActive(!startOpen && tab === 'service')
+  }, [startOpen, tab])
 
   if (startOpen) return state ? <StartScreen state={state} onClose={() => setStartOpen(false)} /> : null
 

@@ -1,11 +1,11 @@
-import type { EndAction, IdleKind, ImageFit, ItemType, ServiceItem, TextBackground, TextStyleKind, UndoKind } from '../../shared/types'
+import type { ClickerAction, EndAction, IdleKind, ImageFit, ItemType, ServiceItem, TextBackground, TextStyleKind, UndoKind } from '../../shared/types'
 
 // All UI text lives here, so it can be translated later.
 
 export const strings = {
   appName: 'Media Console',
   tabService: 'Service',
-  tabScreens: 'Screens',
+  tabScreens: 'Setup',
 
   // Screens page
   screensLabel: 'Screens',
@@ -429,6 +429,9 @@ export const strings = {
   savedMessages: 'Saved messages',
   noSavedMessages: 'No saved messages yet.',
   stageViewLabel: 'Stage view',
+  stageLayoutStage: 'Stage',
+  stageLayoutFull: 'Full screen',
+  stageLayoutHint: 'Stage: clock, timer, now and next. Full screen: what the audience sees on the whole screen, for example a lyric video. Stage messages show in both.',
   stageViewHelp: 'Clock, countdown, now, next, notes and messages for the people on the platform.',
 
   // Countdown item
@@ -498,9 +501,9 @@ export const strings = {
   groupNoScreens: 'No screens in this group.',
   newScreens: 'New screens: add them to a group',
   noOutputsTitle: 'Nothing goes to a screen',
-  noOutputs: 'No output screens yet. Open the Screens tab and turn on "Use for output" for the projector and the other output screens.',
+  noOutputs: 'No output screens yet. Open the Setup tab and turn on "Use for output" for the projector and the other output screens.',
   noneConnected: 'The output screens are not connected. Check the cables and the Windows display settings.',
-  openScreensTab: 'Open the Screens tab',
+  openScreensTab: 'Open the Setup tab',
   noScreensChip: 'No output screen',
 
   // Updates
@@ -548,7 +551,28 @@ export const strings = {
   idleNeedsLogo: 'Choose a church logo below, or the screen stays black.',
   idleNeedsFiles: 'Choose files, or the screen stays black.',
 
-  // Screens page: remote control
+  // Setup page: presenter clicker
+  clickerLabel: 'Presenter clicker',
+  clickerHelp:
+    'Pair the clicker so its buttons change slides and verses even when another program (for example Chrome) is in front. Only the clicker does this: the keyboard keeps working as normal. When Media Console is in front, the clicker works as before.',
+  clickerPair: 'Pair clicker',
+  clickerPairAgain: 'Pair again',
+  clickerForget: 'Forget',
+  clickerCancel: 'Cancel',
+  clickerPressNow: 'Press the Next button on the clicker now…',
+  clickerBackground: 'Works when another program is in front',
+  clickerLastPress: 'Last button',
+  clickerNoPress: 'Press a button on the clicker to test it.',
+  clickerActions: { next: 'Next', previous: 'Previous', black: 'Black screen', other: 'A button the app does not use' } as Record<
+    ClickerAction | 'other',
+    string
+  >,
+  clickerTestHelp:
+    'Test: press an arrow key on the keyboard. If "Last button" changes, the keyboard and the clicker use the same receiver and cannot be told apart. Then use a clicker with its own receiver.',
+  clickerWindowsOnly: 'The clicker in the background works only on Windows.',
+  clickerError: (message: string) => `The clicker in the background does not work on this computer: ${message}`,
+
+  // Setup page: remote control
   remoteLabel: 'Remote control',
   remoteHelp:
     'Control the service from a phone, a tablet or another computer on the same network. Open the address below in its web browser and enter the PIN.',
@@ -565,7 +589,7 @@ export const strings = {
 
   // Remote page (phone or other computer)
   rTitle: 'Media Console Remote',
-  rPinPrompt: 'Enter the PIN shown in Media Console (Screens page).',
+  rPinPrompt: 'Enter the PIN shown in Media Console (Setup tab).',
   rSignIn: 'Connect',
   rWrongPin: 'Wrong PIN.',
   rWait: (s: number) => `Too many wrong PINs. Wait ${s} seconds.`,

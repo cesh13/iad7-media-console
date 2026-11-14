@@ -2783,3 +2783,39 @@
   gap: 8px;
   margin-top: 6px;
 }
+
+/* Setup page: presenter clicker (SPEC 5.8) */
+.clicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.clicker-name {
+  font-weight: 600;
+}
+.clicker-pairing {
+  color: var(--preview);
+  font-weight: 600;
+}
+.clicker-last {
+  margin: 10px 0 4px;
+}
+/* A short flash on each button press, so a test press is easy to see. */
+.clicker-press {
+  padding: 2px 8px;
+  border-radius: 4px;
+  animation: clicker-flash 0.8s ease-out;
+}
+@keyframes clicker-flash {
+  from {
+    background: var(--preview-tint);
+    color: var(--preview);
+  }
+}
+
+/* Screens column: Stage / Full screen switch on a stage group card */
+.stage-layout {
+  margin: 6px 0;
+}

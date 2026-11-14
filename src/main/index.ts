@@ -4,6 +4,7 @@ import appIcon from '../../build/icon.png?asset'
 import type {
   BibleOptions,
   BibleRef,
+  ClickerAction,
   GroupConfig,
   ItemSettings,
   ItemStatus,
@@ -45,6 +46,7 @@ import { listServices } from './serviceStore'
 import { outputRenders } from './render'
 import * as remote from './remote'
 import * as svc from './service'
+import * as clicker from './clicker'
 import * as presets from './presets'
 import { createService, loadService, withUniqueName } from './serviceStore'
 import { loadSettings, saveSettings } from './settings'
@@ -61,6 +63,8 @@ import {
 // The main process holds the state. Windows only show what we send them.
 let settings: Settings
 let controlWindow: BrowserWindow | null = null
+/** The Service page is shown, so the control window handles the clicker keys itself when it is in front. */
+let liveKeysActive = false
 
 const mediaExtensions = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
 const orderExtensions = [...mediaExtensions, 'pdf', 'pptx', 'ppt', 'ppsx', 'pps', 'odp', 'txt']
@@ -497,6 +501,14 @@ function registerIpc(): void {
   ipcMain.handle('bible:screens', (_e, ref: BibleRef, settings: Partial<ItemSettings>) => svc.bibleScreens(ref, settings))
 
   // ---- Remote control ----
+  ipcMain.handle('clicker:get', () => clicker.clickerStatus())
+  ipcMain.handle('clicker:pair', () => clicker.startPairing())
+  ipcMain.handle('clicker:cancelPairing', () => clicker.cancelPairing())
+  ipcMain.handle('clicker:forget', () => clicker.forgetClicker())
+  ipcMain.handle('clicker:setEnabled', (_e, enabled: boolean) => clicker.setClickerEnabled(enabled))
+  ipcMain.handle('clicker:liveKeys', (_e, active: boolean) => {
+    liveKeysActive = active
+  })
   ipcMain.handle('remote:get', () => remote.remoteStatus())
   ipcMain.handle('remote:update', (_e, change: Partial<RemoteSettings>) => remote.updateRemote(change))
   ipcMain.handle('update:get', () => updateStatus())
@@ -559,6 +571,12 @@ function triggerHotkey(key: number): void {
   else if (f.path) svc.goLiveFile(f.path)
 }
 
+/** A button of the paired clicker while Media Console is not in front (SPEC 5.8). */
+function clickerAction(action: ClickerAction): void {
+  if (action === 'black') svc.setOverlay('black', !svc.getOverlays().black)
+  else svc.pageStep(action === 'next' ? 1 : -1)
+}
+
 function openCurrentService(): void {
   let service = settings.currentServiceId ? loadService(settings.currentServiceId) : null
   if (!service) {
@@ -612,6 +630,12 @@ if (!app.requestSingleInstanceLock()) {
     })
     library.connectLibrary(settings, sendServiceState)
     presets.connectPresets(settings, sendServiceState)
+    clicker.connectClicker(settings, {
+      onAction: clickerAction,
+      onStatus: (status) => controlWindow?.webContents.send('clicker:changed', status),
+      // In front, on the Service page, the control window's own keys move the slides.
+      shouldAct: () => !(controlWindow?.isFocused() && liveKeysActive)
+    })
     svc.connectUsage(library.markUsed)
     svc.connectAudioHooks({
       playItem: audio.playItem,
@@ -629,6 +653,7 @@ if (!app.requestSingleInstanceLock()) {
     shared.onSharedChanged(() => controlWindow?.webContents.send('shared:changed', shared.sharedState()))
     if (settings.sharedFolder) shared.setSharedFolder(settings.sharedFolder)
     createControlWindow()
+    if (controlWindow) clicker.startClicker(controlWindow)
     syncOutputs()
     remote.connectRemote(settings, {
       state: () => remote.buildRemoteState(svc.serviceState(), audio.audioState(), svc.findItem, svc.isReady),
