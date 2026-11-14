@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GroupConfig, GroupView, OutputStatus, ScreenInfo, ScreensState, ServiceState } from '../../../shared/types'
 import { strings } from '../strings'
+import { ClickerSection } from './ClickerSection'
 import { GroupsEditor, LogoSection } from './GroupsEditor'
 import { useScreensState, useServiceState } from './hooks'
 import { RemoteSection } from './RemoteSection'
@@ -8,7 +9,7 @@ import { GroupLiveView } from './ScreensColumn'
 
 const api = window.mediaConsole
 
-/** Screen setup: name the output screens, choose their group, test them, edit groups, and choose the logo. */
+/** Setup page: name the output screens, choose their group, test them, edit groups, choose the logo, the remote control and the clicker. */
 export function ScreensPage() {
   const [state, setState] = useScreensState()
   const service = useServiceState()
@@ -72,6 +73,7 @@ export function ScreensPage() {
       <GroupsEditor state={state} />
       <LogoSection state={state} />
       <RemoteSection />
+      <ClickerSection />
     </main>
   )
 }

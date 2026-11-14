@@ -1,13 +1,20 @@
 # Changes
 
-## Not released yet
+## 2.0.0 – 2026-11-14
 
+- This version has all changes of version 1.5.0 (below), and adds the Hymnal tab and the "Hide screens" button.
 - New Hymnal tab (Ctrl+4, or Ctrl+H to open it and search): the hymns of the Himnario Adventista, from a folder of pictures and music. Search by number or title, choose "Sung", "Track only" or "No music", then add the hymn to the playlist or show it now.
 - When a hymn goes live, its music starts and the slides follow the music. The arrow keys still change the slide. A double-click on a slide makes the music jump to that slide. The music stops when the hymn leaves the screens.
 - The hymn files are not part of the app. Copy them into the hymnal folder (`Documents\Himnario`, or a folder chosen in the Hymnal tab). `npm run himnario` copies them from the old "Himnario Adventista" program.
 - The music of a hymn is "Track only" unless you choose another kind. The app remembers the last choice on that computer.
 - New "Hide screens" button in the top bar: it takes this app off the output screens, so they show the Windows desktop (Zoom, a browser, another program). The button is yellow while the screens are hidden; click it again to show the screens. Items stay live and sound keeps playing while the screens are hidden.
-- Updates now come from this project's own GitHub releases.
+- The project is now at `github.com/iglesia-adventista-miramonte/iad7-media-console`, and updates come from its GitHub releases. A computer that has version 1.5.0 or older needs the 2.0.0 installer once; after that it updates itself from the new place.
+
+## 1.5.0 – 2026-11-14
+
+- Presenter clicker in the background: on the Setup tab, click "Pair clicker" and press the Next button on the clicker. Then its next, previous and black screen buttons work even when another program (for example Chrome) is in front. Only the clicker does this; the keyboard keeps working as normal. "Last button" shows each press, so you can test it.
+- Stage screen: a new Stage / Full screen switch on the Stage card. Full screen shows what the audience sees on the whole stage screen, for example a lyric video for the singers. Stage messages still show on top.
+- The Screens tab is now called "Setup".
 
 ## 1.4.0 – 2026-11-10
 

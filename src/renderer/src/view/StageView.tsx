@@ -30,6 +30,16 @@ export function StageView({ stage }: { stage: StageRender }) {
   const showTimer = t.running || t.remaining !== t.duration
   const countdown = stage.countdown ? (stage.countdown.endsAt - now) / 1000 : null
 
+  // Full screen: what the audience sees, as large as possible. A Stage message still shows on top.
+  if (stage.full) {
+    return (
+      <div className="stage stage-full">
+        <ScreenView content={stage.mirror.content} text={stage.mirror.text} idle={stage.mirror.idle} overlays={noOverlays} />
+        {stage.message && <div className="stage-message stage-message-over">{stage.message}</div>}
+      </div>
+    )
+  }
+
   return (
     <div className="stage">
       {stage.message && <div className="stage-message">{stage.message}</div>}

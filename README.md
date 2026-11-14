@@ -35,8 +35,10 @@ the folder from the old "Himnario Adventista" program:
 npm run himnario -- "C:\path\to\Himnario NUEVA VERSION PC"
 ```
 
-This app started from [iad7-media-console](https://github.com/cesh13/iad7-media-console)
-by Cesar Molina (MIT license).
+This project continues the first
+[iad7-media-console](https://github.com/cesh13/iad7-media-console) by Cesar
+Molina (MIT license). It has all of its changes up to version 1.5.0, and adds
+the Hymnal and the "Hide screens" button.
 
 ## Make the Windows installer
 
@@ -58,7 +60,7 @@ protected your PC" because the app is not signed: click **More info**, then
 ## Updates
 
 The installed app looks for a new version on
-[GitHub Releases](https://github.com/iglesia-adventista-miramonte/HimnarioAdventista/releases) when
+[GitHub Releases](https://github.com/iglesia-adventista-miramonte/iad7-media-console/releases) when
 it starts. It downloads it quietly and shows "Version x.y.z is ready" in the
 top bar. The update installs when the app closes, so it never stops a service.
 Settings, services and Bibles are kept, because they are in the user data
@@ -82,7 +84,7 @@ before you start the installed app on the same computer.
 ## First setup on the church computer
 
 1. In Windows display settings, choose **Extend** for all screens (not Duplicate).
-2. Open the **Screens** tab. Give a name to each output screen (for example
+2. Open the **Setup** tab. Give a name to each output screen (for example
    "Projector", "Participant monitor"). The control monitor needs no name.
    Use **Test all screens** to see which screen is which (Esc closes a test window).
 3. In **Groups**: put the projector in **Main** and the participant monitor in
@@ -123,6 +125,17 @@ stay live and sound keeps playing while the screens are hidden.
 **+ Text** in the playlist adds a song, chorus or announcement that you type in the
 app. An empty line starts a new screen. The text of a .txt song can be changed in
 the preview too (only in this service, not in the file).
+
+## Presenter clicker in the background
+
+In **Setup → Presenter clicker**, click **Pair clicker** and press the Next
+button on the clicker. Then the clicker changes slides and verses even when
+another program (for example Chrome) is in front. Only the clicker does this:
+the keyboard keeps working as normal. Windows still gives the key to the program
+in front too, so Chrome may scroll a little. Windows only.
+
+To see every key Windows reports and the device it came from, start the app
+with `MEDIA_CONSOLE_CLICKER_LOG=1`.
 
 ## Where the data is
 

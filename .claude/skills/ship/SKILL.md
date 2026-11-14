@@ -29,7 +29,7 @@ into `dist/` without a new version and without uploading.
 
 **How the user makes a token (once):** GitHub → Settings → Developer settings
 → Personal access tokens → Fine-grained tokens → Generate new token. Repository
-access: only `cesh13/iad7-media-console`. Permissions: Contents → Read and
+access: only `iglesia-adventista-miramonte/iad7-media-console`. Permissions: Contents → Read and
 write. Then, in a terminal on this computer: `setx GH_TOKEN "<the token>"`,
 and restart Claude Code so it sees the new variable.
 
@@ -122,7 +122,7 @@ scratchpad, then:
 node -e 'process.stdout.write(JSON.stringify({tag_name:"v<version>",name:"<version>",body:require("fs").readFileSync("build/release-notes.md","utf8")}))' > <scratchpad>/release.json
 curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $GH_TOKEN" \
   -H "Content-Type: application/json" --data @<scratchpad>/release.json \
-  https://api.github.com/repos/cesh13/iad7-media-console/releases
+  https://api.github.com/repos/iglesia-adventista-miramonte/iad7-media-console/releases
 ```
 
 It must print `201`. Then run `npm run release` in the background (it takes
@@ -132,7 +132,7 @@ When it finishes, check:
 
 - `dist/Media Console Setup <version>.exe` and `dist/latest.yml` exist, and
   `latest.yml` has the new version.
-- With the token, `GET https://api.github.com/repos/cesh13/iad7-media-console/releases`
+- With the token, `GET https://api.github.com/repos/iglesia-adventista-miramonte/iad7-media-console/releases`
   shows exactly one release for `v<version>`, not a draft, with these 4 files:
   `Media-Console-Setup-<version>.exe`, its `.blockmap`, `latest.yml` and
   `Media-Console-<version>-portable.exe`. Use the token for this check:
