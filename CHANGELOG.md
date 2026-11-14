@@ -1,5 +1,11 @@
 # Changes
 
+## 2.0.1 – 2026-11-14
+
+- Updates now come from the church's GitHub: github.com/iglesia-adventista-miramonte/iad7-media-console. Computers with version 1.5.0 or older update to this version by themselves, like any other update; no installer is needed. After that they update from the new place.
+- This version has everything from version 2.0.0: the Hymnal tab (Ctrl+4, or Ctrl+H to search), where a hymn's music starts when it goes live and the slides follow the music, and the "Hide screens" button in the top bar, which shows the Windows desktop on the output screens (for Zoom, a browser or another program) while items stay live.
+- It also has everything from version 1.5.0: the presenter clicker that works when another program is in front (Setup tab), and the Stage / Full screen switch on the Stage card.
+
 ## 2.0.0 – 2026-11-14
 
 - This version has all changes of version 1.5.0 (below), and adds the Hymnal tab and the "Hide screens" button.
