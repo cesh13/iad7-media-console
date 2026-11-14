@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, relative, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { cacheDir } from './cache'
+import { hymnalFile } from './hymnal'
 
 const mimeTypes: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -60,14 +61,16 @@ export function registerMediaScheme(): void {
 }
 
 /**
- * Serve files from the media cache as media://cache/<path in the cache>.
- * Only files inside the cache folder can be loaded. Range requests are
+ * Serve files from the media cache as media://cache/<path in the cache>, and
+ * files of the hymnal as media://hymnal/<path in the hymnal folder>.
+ * Only files inside those two folders can be loaded. Range requests are
  * supported, so the video player can jump to any time.
  */
 export function handleMediaScheme(): void {
   protocol.handle('media', (request) => {
     const url = new URL(request.url)
-    const file = url.hostname === 'cache' ? cacheFile(url.pathname) : null
+    // media://cache/… is the media cache; media://hymnal/… is the hymnal folder.
+    const file = url.hostname === 'cache' ? cacheFile(url.pathname) : url.hostname === 'hymnal' ? hymnalFile(url.pathname) : null
     if (!file) return new Response('Not found', { status: 404 })
     const size = statSync(file).size
     const type = mimeType(file)

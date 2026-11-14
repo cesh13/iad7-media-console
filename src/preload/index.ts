@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import type {
   AudioRender,
   AudioState,
+  HymnalState,
   MediaConsoleApi,
   OutputRender,
   PdfJob,
@@ -128,6 +129,7 @@ const api: MediaConsoleApi = {
   seek: (take, seconds) => invoke('live:seek', take, seconds),
   setOverlay: (name, on) => invoke('live:overlay', name, on),
   clearText: (groupId) => invoke('live:clearText', groupId),
+  setScreensHidden: (hidden) => invoke('live:hideScreens', hidden),
 
   // Bible
   importBible: () => invoke('bible:import'),
@@ -142,6 +144,16 @@ const api: MediaConsoleApi = {
   showBibleNow: (ref, startVerse) => invoke('bible:showNow', ref, startVerse),
   showVerse: (verse) => invoke('bible:showVerse', verse),
   bibleScreens: (ref, settings) => invoke('bible:screens', ref, settings),
+
+  // Hymnal
+  getHymnal: () => invoke('hymnal:get'),
+  onHymnalChanged: (cb) => listen<HymnalState>('hymnal:changed', cb),
+  pickHymnalFolder: () => invoke('hymnal:pick'),
+  openHymnalFolder: () => invoke('hymnal:open'),
+  rescanHymnal: () => invoke('hymnal:rescan'),
+  addHymnToOrder: (choice) => invoke('hymnal:add', choice),
+  showHymnNow: (choice) => invoke('hymnal:showNow', choice),
+  setHymnAudio: (id, audio, track) => invoke('hymnal:setAudio', id, audio, track),
 
   // Audio
   getAudio: () => invoke('audio:get'),

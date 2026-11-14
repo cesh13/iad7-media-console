@@ -270,8 +270,33 @@ export const strings = {
   bibleBackToOrderHint: 'When the verse leaves the screens, the Playlist tab opens with the live item selected.',
   orderTabHint: 'Playlist (Ctrl+1)',
   libraryTabHint: 'Library (Ctrl+3)',
-  /** The key shown on each left tab, in tab order: Playlist, Bible, Library. */
-  leftTabKeys: ['Ctrl+1', 'Ctrl+2', 'Ctrl+3'],
+  /** The key shown on each left tab, in tab order: Playlist, Bible, Library, Hymnal. */
+  leftTabKeys: ['Ctrl+1', 'Ctrl+2', 'Ctrl+3', 'Ctrl+4'],
+
+  // Hymnal tab
+  hymnalLabel: 'Hymnal',
+  hymnalTabHint: 'Hymnal (Ctrl+4, or Ctrl+H: open and search)',
+  hymnSearchPlaceholder: 'Number or title of the hymn',
+  hymnSearchHelp: '↑ ↓ choose · Enter adds to the playlist · Ctrl+Enter shows now',
+  hymnNoResults: 'No hymn found.',
+  hymnCount: (n: number) => (n === 1 ? '1 hymn' : `${n} hymns`),
+  hymnChoose: 'Choose a hymn in the list on the left.',
+  hymnMusic: 'Music',
+  hymnAudio: { sung: 'Sung', instrumental: 'Track only', none: 'No music' },
+  hymnAudioMissing: 'no file',
+  hymnTrack: 'Music file',
+  hymnSync: 'Slides follow the music',
+  hymnSyncHint:
+    'When the music reaches the start of a slide, the screens show that slide. You can still change the slide with the arrow keys. Double-click a slide: the music jumps to it.',
+  hymnNoTimes: 'The slide times of this hymn are not known (himnos.json): change the slides with the arrow keys.',
+  hymnMusicNote: (kind: string) => `♪ ${kind}`,
+  hymnalFolder: 'Hymnal folder',
+  hymnalChangeFolder: 'Change folder…',
+  hymnalOpenFolder: 'Open folder',
+  hymnalRescan: 'Read again',
+  hymnalRescanHint: 'Read the hymnal folder again, after files were copied into it',
+  hymnalEmpty:
+    'No hymns in this folder yet. Copy the hymn files into it: Letra (one folder of pictures per hymn), Musica\\Cantado and Musica\\Instrumental (one music file per hymn). Then click "Read again". Or choose the folder where the files are.',
   bibleEmptyMain: 'Add a Bible version first (left column).',
   noBible:
     'No Bible version yet. Download a free version (for example Reina Valera 1909), or import a Bible file (or drop it here): Zefania XML, OSIS XML, JSON, or a text file with book, chapter, verse and text.',
@@ -522,6 +547,11 @@ export const strings = {
   clearTextShort: 'Clear text',
   textX: 'Text ✕',
   blackOn: 'Black is ON — click to show',
+  hideScreens: 'Hide screens',
+  hideScreensHint:
+    'Take this app off the output screens, so they show the Windows desktop (Zoom, a browser, another program). Items stay live and sound keeps playing. Click again to show the screens.',
+  screensHiddenOn: 'Screens are HIDDEN — click to show',
+  screensHiddenHint: 'The output screens show the Windows desktop now, not this app. Click to put this app back on the screens.',
 
   // Groups editor
   groupsLabel: 'Groups',

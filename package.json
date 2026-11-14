@@ -9,6 +9,7 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "icons": "electron scripts/make-icons.cjs",
+    "himnario": "node scripts/import-himnario.cjs",
     "dist": "electron-vite build && electron-builder --win",
     "release": "electron-vite build && electron-builder --win --publish always"
   },
@@ -68,8 +69,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "cesh13",
-        "repo": "iad7-media-console",
+        "owner": "iglesia-adventista-miramonte",
+        "repo": "HimnarioAdventista",
         "releaseType": "release"
       }
     ]

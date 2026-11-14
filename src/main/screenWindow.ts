@@ -18,7 +18,7 @@ export function coverScreen(win: BrowserWindow, s: ScreenInfo): void {
  * Create a window for one screen. Do not set `resizable: false`: on Windows
  * that makes a frameless window 14×7 px bigger than the screen.
  */
-export function createScreenWindow(s: ScreenInfo, mode: 'test' | 'live'): BrowserWindow {
+export function createScreenWindow(s: ScreenInfo, mode: 'test' | 'live', stayHidden: () => boolean = () => false): BrowserWindow {
   const win = new BrowserWindow({
     x: s.x,
     y: s.y,
@@ -38,6 +38,8 @@ export function createScreenWindow(s: ScreenInfo, mode: 'test' | 'live'): Browse
     }
   })
   win.once('ready-to-show', () => {
+    // "Hide screens" is on: the window stays hidden until the operator shows the screens again.
+    if (stayHidden()) return
     coverScreen(win, s)
     // A test window takes focus so Esc can close it. A live window must not
     // take focus away from the control window.

@@ -14,6 +14,7 @@ import type {
   ServiceState,
   Settings
 } from '../shared/types'
+import { hymnalFile } from './hymnal'
 import { cacheFile, mimeType } from './protocol'
 import { saveSettings } from './settings'
 
@@ -158,7 +159,10 @@ export function remoteStateChanged(): void {
 
 /** media://cache/a/b.png → /media/a/b.png, for the remote page. */
 function webUrl(url: string | undefined): string | undefined {
-  return url?.startsWith('media://cache/') ? `/media/${url.slice('media://cache/'.length)}` : undefined
+  if (url?.startsWith('media://cache/')) return `/media/${url.slice('media://cache/'.length)}`
+  // Hymn pictures come from the hymnal folder.
+  if (url?.startsWith('media://hymnal/')) return `/hymnal/${url.slice('media://hymnal/'.length)}`
+  return undefined
 }
 
 /** The small state the remote page shows. */
@@ -235,6 +239,13 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     if (!signedIn(req)) return send(res, 401)
     const file = cacheFile(path.slice('/media'.length))
     if (!file) return send(res, 404)
+    return sendFile(res, file, mimeType(file), 'private, max-age=300')
+  }
+  if (path.startsWith('/hymnal/')) {
+    if (!signedIn(req)) return send(res, 401)
+    // Pictures only: the remote shows the slide, it does not play the music.
+    const file = hymnalFile(path.slice('/hymnal'.length))
+    if (!file || !mimeType(file).startsWith('image/')) return send(res, 404)
     return sendFile(res, file, mimeType(file), 'private, max-age=300')
   }
   return page(req, res, path)

@@ -11,6 +11,8 @@ import type {
   BibleScreen,
   GroupConfig,
   GroupLive,
+  HymnAudio,
+  HymnChoice,
   ItemSettings,
   ItemStatus,
   ItemType,
@@ -29,6 +31,7 @@ import { sortedParts } from '../shared/program'
 import { bibleDefaults, buildScreens, getChapter, listBibles } from './bible'
 import { mediaUrl } from './cache'
 import { refreshMedia } from './groups'
+import { findHymn, hymnAudioUrl } from './hymnal'
 import { bibleOptions, shownStyle } from './textStyles'
 import { prepareFile } from './prepare'
 import { saveService } from './serviceStore'
@@ -47,14 +50,20 @@ let seekId = 0
 /** Timers for images with "next item after N s", by take. */
 const autoNextTimers = new Map<number, NodeJS.Timeout>()
 
-/** The audio layer: an audio item from the order that plays now (one for all groups). */
-let audioLayer: { itemId: string; take: number } | null = null
+/**
+ * The audio layer: an audio item from the order that plays now (one for all groups).
+ * `hymn`: the music of a hymn. It stops when the slides of the hymn leave the screens.
+ * `syncPage`: the slide that the time of the music asked for last.
+ */
+let audioLayer: { itemId: string; take: number; hymn?: boolean; syncPage?: number } | null = null
 let audioHooks: {
   playItem: (itemId: string, title: string, url: string, volume: number) => void
   stopItem: () => void
+  /** Jump to a time (seconds) in the audio item that plays now. */
+  seekItem: (seconds: number) => void
   stopMusic: () => void
   orderEnded: () => void
-} = { playItem: () => {}, stopItem: () => {}, stopMusic: () => {}, orderEnded: () => {} }
+} = { playItem: () => {}, stopItem: () => {}, seekItem: () => {}, stopMusic: () => {}, orderEnded: () => {} }
 
 /** Earlier versions of the order, for "Undo" (newest last). The items are the same objects, not copies. */
 const undoStack: { kind: UndoKind; items: ServiceItem[] }[] = []
@@ -139,6 +148,10 @@ export function initService(loaded: Service): void {
     // Nothing is live when the app starts.
     if (item.status === 'live') item.status = 'pending'
     if (item.settings.background) refreshMedia(item.settings.background)
+    if (item.hymn) {
+      applyHymn(item)
+      continue
+    }
     if (!needsFile(item)) continue
     if (item.type === 'folder') {
       openFolderIndex(item.path)
@@ -204,7 +217,17 @@ function setStatus(itemId: string, status: ItemStatus): void {
 /** The service state without the stage and library parts (index.ts adds them). */
 export function serviceState(): Omit<
   ServiceState,
-  'stageTimer' | 'stageMessage' | 'messages' | 'programTemplate' | 'presets' | 'services' | 'library' | 'favorites' | 'textStyles' | 'bibleOptions'
+  | 'stageTimer'
+  | 'stageMessage'
+  | 'messages'
+  | 'programTemplate'
+  | 'presets'
+  | 'services'
+  | 'library'
+  | 'favorites'
+  | 'textStyles'
+  | 'bibleOptions'
+  | 'screensHidden'
 > {
   refreshFolders()
   const next = nextIndex()
@@ -352,7 +375,8 @@ function startCopy(item: ServiceItem): void {
 
 export function retryCopy(itemId: string): void {
   const item = findItem(itemId)
-  if (item && item.cache === 'error') startCopy(item)
+  if (item?.hymn) applyHymn(item)
+  else if (item && item.cache === 'error') startCopy(item)
   changed()
 }
 
@@ -467,6 +491,11 @@ function groupsShowing(itemId: string): string[] {
 
 /** Items that were live and are not live in any group now get "done" (or "pending"). */
 function updateStatuses(before: Set<string>, markDone: boolean): void {
+  // The music of a hymn stops when its slides are not on any screen.
+  if (audioLayer?.hymn && groupsShowing(audioLayer.itemId).length === 0) {
+    audioLayer = null
+    audioHooks.stopItem()
+  }
   const now = liveItemIds()
   for (const id of now) setStatus(id, 'live')
   for (const id of before) {
@@ -564,6 +593,7 @@ function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
       content: {
         itemId: item.id,
         type: item.type,
+        title: item.title,
         url: item.url!,
         settings: item.settings,
         take: t,
@@ -572,6 +602,7 @@ function goLiveIn(groupIds: string[], itemId: string, page = 0): void {
       }
     })
   }
+  if (item.hymn) startHymnAudio(item, t, clampPage(item, page))
   updateStatuses(before, true)
   if (item.type === 'image' && item.settings.autoNext) {
     autoNextTimers.set(t, setTimeout(() => advanceFrom(t), item.settings.autoNext * 1000))
@@ -600,6 +631,9 @@ function stepTake(t: number, delta: number, atEnd: 'next' | 'idle' = 'next'): vo
   const count = item.pageUrls?.length ?? 1
   let page = (content.page ?? 0) + delta
   if (page >= count) {
+    // A key press after the last slide of a hymn does nothing: the last slide
+    // stays while the people sing. Esc or the next item takes it off.
+    if (item.hymn && !item.settings.loop && atEnd === 'idle') return
     if (!item.settings.loop) return atEnd === 'next' ? advanceFrom(t) : clearGroups(groupIds, true, 'content')
     page = 0
   }
@@ -635,6 +669,8 @@ export function showPage(itemId: string, page: number): void {
   const ids = targetGroupIds().filter((id) => groupLive(id).content?.itemId === itemId)
   if (ids.length === 0) return goLive(itemId, undefined, page)
   for (const id of ids) live.get(id)!.content!.page = clampPage(item, page)
+  // A hymn with music: the music jumps to the start of this slide.
+  if (item.hymn && audioLayer?.hymn && audioLayer.itemId === item.id) seekHymnTo(item, clampPage(item, page))
   changed({ save: false })
 }
 
@@ -838,7 +874,8 @@ export function copyOrder(from: Service): void {
   for (const old of from.items) {
     const item = freshItem(old)
     service.items.push(item)
-    if (item.type === 'folder') openFolderIndex(item.path)
+    if (item.hymn) applyHymn(item)
+    else if (item.type === 'folder') openFolderIndex(item.path)
     else if (needsFile(item)) restoreItem(item)
   }
   changed()
@@ -888,6 +925,147 @@ export function goLiveCountdown(seconds: number, title: string): void {
     extraItems.push(item)
   }
   goLive(item.id)
+}
+
+// ---- Hymnal ----
+// A hymn is a slides item: its pages are the pictures in the hymnal folder
+// (not copied to the cache). Its music plays on the audio layer.
+
+/** Set the pictures of a hymn item from the hymnal folder. The hymn may be missing (folder moved or empty). */
+function applyHymn(item: ServiceItem): void {
+  if (!item.hymn) return
+  item.settings = { ...defaultSettings('slides'), volume: 1, ...item.settings }
+  const hymn = findHymn(item.hymn.number)
+  item.cacheProgress = undefined
+  if (!hymn) {
+    item.pageUrls = []
+    item.url = undefined
+    item.cache = 'error'
+    item.cacheError = `Hymn ${item.hymn.number} is not in the hymnal folder.`
+    return
+  }
+  item.pageUrls = hymn.pageUrls
+  item.url = hymn.pageUrls[0]
+  item.cache = 'ready'
+  item.cacheError = undefined
+}
+
+function newHymnItem(choice: HymnChoice): ServiceItem | null {
+  const hymn = findHymn(choice.number)
+  if (!hymn) return null
+  const item: ServiceItem = {
+    id: randomUUID(),
+    type: 'slides',
+    title: `${hymn.number} · ${hymn.title}`,
+    path: '',
+    cache: 'ready',
+    status: 'pending',
+    settings: { ...defaultSettings('slides'), volume: 1 },
+    hymn: { number: choice.number, audio: choice.audio, track: choice.track }
+  }
+  applyHymn(item)
+  return item
+}
+
+/** Add a hymn to the order. Returns the id of the new item. */
+export function addHymn(choice: HymnChoice): string | null {
+  const item = newHymnItem(choice)
+  if (!item) return null
+  saveUndo('add')
+  service.items.push(item)
+  changed()
+  return item.id
+}
+
+/** "Show now" in the Hymnal tab: live on the target, not added to the order. */
+export function showHymnNow(choice: HymnChoice): void {
+  let item = extraItems.find((i) => i.hymn?.number === choice.number)
+  if (item) {
+    item.hymn = { number: choice.number, audio: choice.audio, track: choice.track }
+    applyHymn(item)
+  } else {
+    item = newHymnItem(choice) ?? undefined
+    if (!item) return
+    item.settings.autoDone = false
+    extraItems.push(item)
+  }
+  goLive(item.id)
+}
+
+/** Change the music of a hymn item. A hymn that is live gets the new music at the slide it shows. */
+export function setHymnAudio(itemId: string, audio: HymnAudio, track?: number): void {
+  const item = findItem(itemId)
+  if (!item?.hymn) return
+  item.hymn = { number: item.hymn.number, audio, track }
+  const content = [...live.values()].map((g) => g.content).find((c) => c?.itemId === itemId)
+  if (content) {
+    const before = liveItemIds()
+    startHymnAudio(item, content.take, content.page ?? 0)
+    updateStatuses(before, true)
+  }
+  changed()
+}
+
+/** After the hymnal folder changes: hymn items get their pictures again. */
+export function hymnalChanged(): void {
+  if (!service) return
+  for (const item of [...service.items, ...extraItems]) if (item.hymn) applyHymn(item)
+  changed({ save: false })
+}
+
+/** Seconds in the music when this slide starts (0 for the first slide, or when the times are not known). */
+function slideTime(item: ServiceItem, page: number): number {
+  const times = item.hymn ? (findHymn(item.hymn.number)?.times ?? []) : []
+  return page > 0 ? (times[page - 1] ?? 0) : 0
+}
+
+function hymnSyncOn(item: ServiceItem): boolean {
+  return item.settings.hymnSync !== false && (findHymn(item.hymn?.number ?? -1)?.times.length ?? 0) > 0
+}
+
+/** Start the music of a hymn that just went live at `page`. A hymn with no music stops the music of the hymn before it. */
+function startHymnAudio(item: ServiceItem, t: number, page: number): void {
+  const url = item.hymn ? hymnAudioUrl(item.hymn) : null
+  if (audioLayer?.hymn) {
+    audioLayer = null
+    audioHooks.stopItem()
+  }
+  if (!url) return
+  audioHooks.stopMusic()
+  audioLayer = { itemId: item.id, take: t, hymn: true, syncPage: page }
+  audioHooks.playItem(item.id, item.title, url, item.settings.volume ?? 1)
+  if (hymnSyncOn(item) && slideTime(item, page) > 0) audioHooks.seekItem(slideTime(item, page))
+}
+
+/** The operator chose a slide of a live hymn: the music jumps to the start of that slide. */
+function seekHymnTo(item: ServiceItem, page: number): void {
+  if (!audioLayer || !hymnSyncOn(item)) return
+  audioLayer.syncPage = page
+  audioHooks.seekItem(slideTime(item, page))
+}
+
+/**
+ * The time of the audio item moved. The slides of a hymn follow its music:
+ * when the music passes the start time of a slide, the screens show that
+ * slide. Between two start times the operator can still change the slide by hand.
+ */
+export function audioItemTime(itemId: string, time: number): void {
+  if (!audioLayer?.hymn || audioLayer.itemId !== itemId) return
+  const item = findItem(itemId)
+  if (!item?.hymn || !hymnSyncOn(item)) return
+  const times = findHymn(item.hymn.number)?.times ?? []
+  let page = 0
+  while (page < times.length && time >= times[page]) page++
+  page = clampPage(item, page)
+  if (page === audioLayer.syncPage) return
+  audioLayer.syncPage = page
+  let any = false
+  for (const g of live.values()) {
+    if (g.content?.itemId !== itemId || g.content.page === page) continue
+    g.content.page = page
+    any = true
+  }
+  if (any) changed({ save: false })
 }
 
 // ---- Stage screen ----

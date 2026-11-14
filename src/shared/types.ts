@@ -84,6 +84,44 @@ export interface Settings {
   /** Saved orders that a new service can start from (SPEC 5.7). */
   presets?: Preset[]
   remote?: RemoteSettings
+  /** The hymnal folder (pictures and music). Not set: the default folder. */
+  hymnalFolder?: string
+}
+
+// ---- Hymnal (pictures and music of each hymn, from a folder) ----
+
+/** The music of a hymn: sung, track only, or no music (the people sing alone). */
+export type HymnAudio = 'sung' | 'instrumental' | 'none'
+
+/** One hymn in the hymnal folder. */
+export interface HymnInfo {
+  number: number
+  title: string
+  /** One picture per slide (media:// URLs). */
+  pageUrls: string[]
+  /** Names of the sung music files. Most hymns have one. */
+  sung: string[]
+  /** Names of the track-only music files. */
+  instrumental: string[]
+  /** Seconds in the music when slide 2, 3, … starts. Empty: not known. */
+  times: number[]
+}
+
+/** Everything the Hymnal tab shows. */
+export interface HymnalState {
+  /** The folder the app reads. */
+  root: string
+  /** The folder has a "Letra" folder with hymns. */
+  found: boolean
+  hymns: HymnInfo[]
+}
+
+/** A hymn in the order: which hymn, and which music plays with it. */
+export interface HymnChoice {
+  number: number
+  audio: HymnAudio
+  /** Index in the list of music files of that kind (0 = the first). */
+  track?: number
 }
 
 /** How Bible verses go on the screens (SPEC 5.5). */
@@ -443,6 +481,9 @@ export interface ItemSettings {
   // Song and Bible text
   /** A background picture or video only for this item (instead of the style background). */
   background?: MediaRef | null
+  // Hymn
+  /** The slides follow the music (when the hymnal has the slide times). Default on. */
+  hymnSync?: boolean
 }
 
 // ---- Bible ----
@@ -540,6 +581,8 @@ export interface ServiceItem {
   bible?: BibleRef
   /** Song (.txt): the stanzas, one per screen. */
   stanzas?: string[]
+  /** A hymn from the hymnal folder: a slides item (the pictures) with music. */
+  hymn?: HymnChoice
   /** Folder: the chosen file, and that file as an item (copied and converted like any item). */
   folderChoice?: string
   child?: ServiceItem
@@ -621,6 +664,8 @@ export interface ProgramPart {
 export interface ContentLayer {
   itemId: string
   type: ItemType
+  /** The title of the item (items that are not in the order have no other name on the control window). */
+  title?: string
   url: string
   settings: ItemSettings
   /** Slides: the page shown now (0 = first) and the pictures of all pages. */
@@ -714,6 +759,8 @@ export interface ServiceState {
   logoUrl?: string
   textStyles: TextStyles
   bibleOptions: BibleOptions
+  /** "Hide screens" is on: the output windows are hidden and the screens show the Windows desktop. */
+  screensHidden: boolean
   /** The change that "Undo" takes back, or null when there is nothing to undo. */
   undo: UndoKind | null
 }
@@ -832,6 +879,11 @@ export interface MediaConsoleApi {
   setOverlay(name: keyof Overlays, on: boolean): Promise<void>
   /** Remove the text layer of the target, of one group, or of all groups ("Clear text"). */
   clearText(groupId?: string | 'all'): Promise<void>
+  /**
+   * "Hide screens": hide the output windows, so the screens show the Windows desktop
+   * (Zoom, a browser…), or show them again. Items stay live and sound keeps playing.
+   */
+  setScreensHidden(hidden: boolean): Promise<void>
 
   // Services
   newService(): Promise<void>
@@ -903,6 +955,22 @@ export interface MediaConsoleApi {
   showVerse(verse: number): Promise<void>
   /** Screens for a passage with the given settings (for the preview). */
   bibleScreens(ref: BibleRef, settings: Partial<ItemSettings>): Promise<BibleScreen[]>
+
+  // Hymnal
+  getHymnal(): Promise<HymnalState>
+  onHymnalChanged(callback: (state: HymnalState) => void): () => void
+  /** Show a folder dialog and read the hymnal from the chosen folder. */
+  pickHymnalFolder(): Promise<void>
+  /** Open the hymnal folder in the file explorer (the folder is made if it is missing). */
+  openHymnalFolder(): Promise<void>
+  /** Read the hymnal folder again (after files were copied into it). */
+  rescanHymnal(): Promise<void>
+  /** Add a hymn to the order. Returns the id of the new item, or null. */
+  addHymnToOrder(choice: HymnChoice): Promise<string | null>
+  /** Show the hymn now on the target, without adding it to the order. */
+  showHymnNow(choice: HymnChoice): Promise<void>
+  /** Change the music of a hymn item. If the hymn is live, the new music starts at the slide shown. */
+  setHymnAudio(itemId: string, audio: HymnAudio, track?: number): Promise<void>
 
   // Audio
   getAudio(): Promise<AudioState>

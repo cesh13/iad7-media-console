@@ -4,6 +4,8 @@ import { formatTime, strings } from '../strings'
 import { ScreenView, type PlaybackReport } from '../view/ScreenView'
 import { useAudioDevices } from './AudioTab'
 import { BiblePreview, SongPreview } from './BiblePreview'
+import { useHymnalState } from './hooks'
+import { HymnMusicOptions, playableAudio } from './HymnalView'
 import { MediaButton } from './MediaIcons'
 
 const api = window.mediaConsole
@@ -147,6 +149,7 @@ function ItemPreview({ state, item }: { state: ServiceState; item: ServiceItem }
         />
       )}
       {item.type === 'image' && <ImageOptions item={item} set={set} />}
+      {item.hymn && ready && <HymnOptions item={item} set={set} />}
       {item.type === 'slides' && ready && (
         <SlidesOptions item={item} page={page} livePage={liveContent?.page} onPage={setPage} set={set} />
       )}
@@ -210,8 +213,44 @@ function metaLine(item: ServiceItem): string {
   if (item.width && item.height) parts.push(`${item.width}×${item.height}`)
   if (item.type === 'video') parts.push(formatTime(item.duration))
   if (item.type === 'slides' && item.pageUrls) parts.push(strings.slideCount(item.pageUrls.length))
-  parts.push(item.cache === 'ready' ? strings.localCopyOk : strings.cacheStates(item))
+  // A hymn plays from the hymnal folder: it has no local copy.
+  if (item.hymn) parts.push(strings.hymnMusicNote(strings.hymnAudio[item.hymn.audio]))
+  else parts.push(item.cache === 'ready' ? strings.localCopyOk : strings.cacheStates(item))
   return parts.join(' · ')
+}
+
+// ---- Hymn ----
+
+/** A hymn from the hymnal: which music plays with the slides, and if the slides follow it. */
+function HymnOptions({ item, set }: { item: ServiceItem; set: (s: Partial<ItemSettings>) => void }) {
+  const hymnal = useHymnalState()
+  const hymn = hymnal?.hymns.find((h) => h.number === item.hymn?.number)
+  if (!hymn || !item.hymn) return null
+  const hasMusic = playableAudio(hymn, item.hymn.audio) !== 'none'
+  return (
+    <div className="hymn-options">
+      <HymnMusicOptions
+        hymn={hymn}
+        audio={item.hymn.audio}
+        track={item.hymn.track ?? 0}
+        onAudio={(a) => void api.setHymnAudio(item.id, a)}
+        onTrack={(t) => void api.setHymnAudio(item.id, item.hymn!.audio, t)}
+      />
+      {hymn.times.length > 0 ? (
+        <label className="check" title={strings.hymnSyncHint}>
+          <input
+            type="checkbox"
+            disabled={!hasMusic}
+            checked={hasMusic && item.settings.hymnSync !== false}
+            onChange={(e) => set({ hymnSync: e.target.checked })}
+          />
+          {strings.hymnSync}
+        </label>
+      ) : (
+        hasMusic && <span className="dim small">{strings.hymnNoTimes}</span>
+      )}
+    </div>
+  )
 }
 
 /** Notes are saved when the field loses focus, not on every key. */

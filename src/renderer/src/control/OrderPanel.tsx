@@ -333,6 +333,8 @@ function StatusMark({ item, isNext }: { item: ServiceItem; isNext: boolean }) {
 export type IconKind = ServiceItem['type'] | 'text'
 
 export function iconFor(item: ServiceItem): IconKind {
+  // A hymn is a slides item (its pictures), but for the team it is a song.
+  if (item.hymn) return 'song'
   return item.type === 'song' && !item.path ? 'text' : item.type
 }
 

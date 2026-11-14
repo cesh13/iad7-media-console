@@ -4,6 +4,7 @@ import { formatTime, strings } from '../strings'
 import { useAudioState } from './AudioTab'
 import { useScreensState, useServiceState } from './hooks'
 import { BibleMain, BibleSide, useBible } from './BiblePanel'
+import { HymnalMain, HymnalSide, useHymnal } from './HymnalView'
 import { LibraryMain, LibrarySide, pathDragType, type LibSelection } from './LibraryView'
 import { iconFor, OrderPanel, TypeIcon, type IconKind } from './OrderPanel'
 import { PreviewPanel } from './PreviewPanel'
@@ -18,7 +19,7 @@ export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () 
   const state = useServiceState()
   const [screens] = useScreensState()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [leftTab, setLeftTab] = useState<'order' | 'library' | 'bible'>('order')
+  const [leftTab, setLeftTab] = useState<'order' | 'library' | 'bible' | 'hymnal'>('order')
   const [library, setLibrary] = useState<LibSelection>({ kind: 'favorites' })
   const [dropOnOrder, setDropOnOrder] = useState(false)
   // The Bible state lives here, so it stays the same when the tab changes.
@@ -29,6 +30,13 @@ export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () 
   useEffect(() => {
     if (bibleFocus) bible.focusSearch()
   }, [bibleFocus])
+
+  // The hymnal state lives here too. Ctrl+H: show the Hymnal tab, then put the cursor in its search input.
+  const hymnal = useHymnal()
+  const [hymnalFocus, setHymnalFocus] = useState(0)
+  useEffect(() => {
+    if (hymnalFocus) hymnal.focusSearch()
+  }, [hymnalFocus])
 
   const items = state?.service.items ?? []
   const selected = items.find((i) => i.id === selectedId) ?? null
@@ -80,10 +88,17 @@ export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () 
         setBibleFocus((n) => n + 1)
         return
       }
-      // Ctrl+1 / Ctrl+2 / Ctrl+3: Order, Bible, Library tabs (works from any input too).
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && /^[1-3]$/.test(e.key)) {
+      // Ctrl+H: open the Hymnal tab and search (works from any input too).
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
         e.preventDefault()
-        setLeftTab((['order', 'bible', 'library'] as const)[Number(e.key) - 1])
+        setLeftTab('hymnal')
+        setHymnalFocus((n) => n + 1)
+        return
+      }
+      // Ctrl+1 … Ctrl+4: Order, Bible, Library, Hymnal tabs (works from any input too).
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && /^[1-4]$/.test(e.key)) {
+        e.preventDefault()
+        setLeftTab((['order', 'bible', 'library', 'hymnal'] as const)[Number(e.key) - 1])
         return
       }
       // A checkbox keeps the focus after a click, but nobody types in it: the keys must still work.
@@ -210,10 +225,19 @@ export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () 
               {strings.libraryLabel}
               <span className="tab-key">{strings.leftTabKeys[2]}</span>
             </button>
+            <button
+              className={leftTab === 'hymnal' ? 'tab is-active' : 'tab'}
+              title={strings.hymnalTabHint}
+              onClick={() => setLeftTab('hymnal')}
+            >
+              {strings.hymnalLabel}
+              <span className="tab-key">{strings.leftTabKeys[3]}</span>
+            </button>
           </nav>
           {leftTab === 'order' && <OrderPanel state={state} selectedId={selectedId} onSelect={setSelectedId} />}
           {leftTab === 'library' && <LibrarySide state={state} selection={library} onSelect={setLibrary} />}
           {leftTab === 'bible' && <BibleSide state={state} bible={bible} />}
+          {leftTab === 'hymnal' && <HymnalSide state={state} hymnal={hymnal} />}
         </div>
         <div className="service-center-col">
           <div className="service-center">
@@ -222,6 +246,7 @@ export function ServicePage({ onOpenScreens, onOpenStart }: { onOpenScreens: () 
               <LibraryMain state={state} selection={library} onOpenInPreview={(p) => void openInPreview(p)} />
             )}
             {leftTab === 'bible' && <BibleMain state={state} bible={bible} />}
+            {leftTab === 'hymnal' && <HymnalMain state={state} hymnal={hymnal} />}
           </div>
           {/* Always visible under the scrolling area, so the live controls never need a scroll. */}
           <LivePanel state={state} escArmed={escArmed} />
@@ -400,8 +425,13 @@ function LiveContentRow({ state, content, groups }: { state: ServiceState; conte
       <span className="tag tag-live">{strings.badgeLive}</span>
       {item && <TypeIcon type={iconFor(item)} />}
       <span className="live-title" title={groupNames(groups)}>
-        {item?.title}
+        {item?.title ?? content.title}
       </span>
+      {content.type === 'slides' && (
+        <span className="mono">
+          {(content.page ?? 0) + 1}/{content.pageUrls?.length ?? 1}
+        </span>
+      )}
       {content.type === 'video' ? (
         <div className="video-controls live-video">
           <MediaButton

@@ -1,10 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import appIcon from '../../build/icon.png?asset'
 import type {
   BibleOptions,
   BibleRef,
   GroupConfig,
+  HymnAudio,
+  HymnChoice,
   ItemSettings,
   ItemStatus,
   OutputStatus,
@@ -27,11 +29,14 @@ import * as bible from './bible'
 import { bibleCatalog, downloadBible } from './bibleCatalog'
 import { listScreens, matchOutputs } from './displays'
 import * as groups from './groups'
+import * as hymnal from './hymnal'
 import {
   allowOutputWindowsToClose,
   onOutputWindowLost,
   openOutputIds,
+  outputsHidden,
   sendRender,
+  setOutputsHidden,
   syncOutputWindows
 } from './outputWindows'
 import { loadPage, preloadPath } from './pages'
@@ -117,7 +122,8 @@ function serviceStateFull(): ServiceState {
     library: library.libraryFolders(),
     favorites: library.favorites(),
     textStyles: textStyles.textStyles(),
-    bibleOptions: textStyles.bibleOptions()
+    bibleOptions: textStyles.bibleOptions(),
+    screensHidden: outputsHidden()
   }
 }
 
@@ -459,6 +465,10 @@ function registerIpc(): void {
   ipcMain.handle('live:seek', (_e, take: number, seconds: number) => svc.seek(take, seconds))
   ipcMain.handle('live:overlay', (_e, name: keyof Overlays, on: boolean) => svc.setOverlay(name, on))
   ipcMain.handle('live:clearText', (_e, groupId?: string) => svc.clearText(groupId))
+  ipcMain.handle('live:hideScreens', (_e, hidden: boolean) => {
+    setOutputsHidden(!!hidden)
+    sendServiceState()
+  })
 
   // ---- Bible ----
   const importBibleFile = async (path: string): Promise<string | null> => {
@@ -495,6 +505,21 @@ function registerIpc(): void {
   ipcMain.handle('bible:showNow', (_e, ref: BibleRef, startVerse?: number) => svc.showBibleNow(ref, startVerse))
   ipcMain.handle('bible:showVerse', (_e, verse: number) => svc.showVerse(verse))
   ipcMain.handle('bible:screens', (_e, ref: BibleRef, settings: Partial<ItemSettings>) => svc.bibleScreens(ref, settings))
+
+  // ---- Hymnal ----
+  ipcMain.handle('hymnal:get', () => hymnal.hymnalState())
+  ipcMain.handle('hymnal:pick', async () => {
+    if (!controlWindow) return
+    const result = await dialog.showOpenDialog(controlWindow, { properties: ['openDirectory'], defaultPath: hymnal.hymnalRoot() })
+    if (!result.canceled && result.filePaths[0]) hymnal.setHymnalFolder(result.filePaths[0])
+  })
+  ipcMain.handle('hymnal:open', async () => {
+    await shell.openPath(hymnal.ensureHymnalFolder())
+  })
+  ipcMain.handle('hymnal:rescan', () => hymnal.rescanHymnal())
+  ipcMain.handle('hymnal:add', (_e, choice: HymnChoice) => svc.addHymn(choice))
+  ipcMain.handle('hymnal:showNow', (_e, choice: HymnChoice) => svc.showHymnNow(choice))
+  ipcMain.handle('hymnal:setAudio', (_e, id: string, audio: HymnAudio, track?: number) => svc.setHymnAudio(id, audio, track))
 
   // ---- Remote control ----
   ipcMain.handle('remote:get', () => remote.remoteStatus())
@@ -604,7 +629,13 @@ if (!app.requestSingleInstanceLock()) {
         controlWindow?.webContents.send('audio:changed', audio.audioState())
         remote.remoteStateChanged()
       },
-      onItemEnded: svc.audioItemEnded
+      onItemEnded: svc.audioItemEnded,
+      onItemTime: svc.audioItemTime
+    })
+    // Read the hymnal folder before the service opens: hymn items need their pictures.
+    hymnal.connectHymnal(settings, () => {
+      svc.hymnalChanged()
+      controlWindow?.webContents.send('hymnal:changed', hymnal.hymnalState())
     })
     stage.connectStage(settings, () => {
       sendServiceState()
@@ -616,6 +647,7 @@ if (!app.requestSingleInstanceLock()) {
     svc.connectAudioHooks({
       playItem: audio.playItem,
       stopItem: audio.stopItem,
+      seekItem: (seconds) => audio.controlItem({ seekTo: seconds }),
       stopMusic: audio.fadeOut,
       orderEnded: audio.orderEnded
     })

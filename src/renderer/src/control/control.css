@@ -767,6 +767,16 @@
   background: var(--live);
   border-color: var(--live);
 }
+/* "Hide screens": yellow while the screens show the Windows desktop, so nobody forgets it. */
+.btn-hidden {
+  min-height: 36px;
+}
+.btn-hidden.is-on {
+  background: var(--warn-tint);
+  border-color: var(--warn);
+  color: var(--warn);
+  font-weight: 600;
+}
 .select {
   width: auto;
   min-width: 140px;
@@ -2109,12 +2119,92 @@
 }
 .left-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 0;
   border-bottom: 1px solid var(--border-panel);
 }
+/* Four tabs in a narrow column: the name, with its key under it. */
 .left-tabs .tab {
-  height: 42px;
+  height: 48px;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.left-tabs .tab-key {
+  margin-left: 0;
+}
+
+/* ---- Hymnal tab ---- */
+.hymnal-side {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hymn-search {
+  width: 100%;
+  flex-shrink: 0;
+  border-color: var(--preview);
+}
+/* Takes the rest of the column and scrolls inside. */
+.hymn-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border-panel);
+  border-radius: 6px;
+}
+.hymn-list .folder-entry.is-live .folder-title {
+  color: var(--live);
+  font-weight: 600;
+}
+.hymnal-foot {
+  flex-shrink: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hymnal-foot .label {
+  margin: 0;
+}
+.hymnal-path {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+.hymnal-foot .button-row {
+  margin-top: 2px;
+  gap: 4px;
+}
+.hymn-page {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.hymn-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.hymn-options .select {
+  width: auto;
+  max-width: 260px;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 /* The shortcut key next to a left tab name, for example "Ctrl+1". */
 .tab-key {

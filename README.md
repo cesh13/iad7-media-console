@@ -14,6 +14,30 @@ npm run dev
 `npm run build` makes the app in `out/`; `npm start` runs that build.
 `npm run typecheck` checks the TypeScript code.
 
+## Hymnal (Himnario Adventista)
+
+The **Hymnal** tab (Ctrl+4, or Ctrl+H to open it and search) shows the hymns
+of the hymnal folder. Search by number or title, choose the music (**Sung**,
+**Track only** or **No music**), then **Add to playlist** or **Show now**.
+When a hymn goes live, its pictures show on the screens and its music starts.
+The slides follow the music; the arrow keys still change the slide by hand,
+and a double-click on a slide makes the music jump to it.
+
+"Track only" is the music unless you choose another kind.
+
+The pictures and the music are not in this project (about 3.8 GB). Copy them
+into the hymnal folder: `himnario/` in the project for the dev copy,
+`Documents\Himnario` for the installed app, or choose a folder in the Hymnal
+tab. [himnario/README.md](himnario/README.md) has the folder layout. To fill
+the folder from the old "Himnario Adventista" program:
+
+```bash
+npm run himnario -- "C:\path\to\Himnario NUEVA VERSION PC"
+```
+
+This app started from [iad7-media-console](https://github.com/cesh13/iad7-media-console)
+by Cesar Molina (MIT license).
+
 ## Make the Windows installer
 
 ```bash
@@ -34,7 +58,7 @@ protected your PC" because the app is not signed: click **More info**, then
 ## Updates
 
 The installed app looks for a new version on
-[GitHub Releases](https://github.com/cesh13/iad7-media-console/releases) when
+[GitHub Releases](https://github.com/iglesia-adventista-miramonte/HimnarioAdventista/releases) when
 it starts. It downloads it quietly and shows "Version x.y.z is ready" in the
 top bar. The update installs when the app closes, so it never stops a service.
 Settings, services and Bibles are kept, because they are in the user data
@@ -83,12 +107,18 @@ before you start the installed app on the same computer.
 |---|---|
 | Space | Next item |
 | ← → | Previous / next slide, Bible screen or song stanza |
+| Ctrl+1 … Ctrl+4 | Playlist, Bible, Library, Hymnal tabs (Ctrl+B and Ctrl+H also put the cursor in the search) |
 | ↑ ↓ | Select an item in the playlist (while slides are live: previous or next slide; in the Bible verse list: verse by verse) |
 | Enter | Selected item goes live |
 | Delete | Remove the selected item from the playlist (also the × on the row) |
 | Esc | Clear the screens of the target |
 | F1–F8 | Hotkeys |
 | Ctrl+Z | Undo the last change to the playlist (add, remove, move, copy) |
+
+**Hide screens** (top bar, right) takes this app off the output screens, so
+they show the Windows desktop: a Zoom window, a browser, another program. The
+button turns yellow; click it again to put the app back on the screens. Items
+stay live and sound keeps playing while the screens are hidden.
 
 **+ Text** in the playlist adds a song, chorus or announcement that you type in the
 app. An empty line starts a new screen. The text of a .txt song can be changed in

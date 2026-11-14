@@ -100,8 +100,9 @@ function ItemAudio({ item, device }: { item: NonNullable<AudioRender['item']>; d
       crossOrigin="anonymous"
       autoPlay={item.playing}
       onTimeUpdate={(e) => {
+        // More often than the music: the slides of a hymn follow this time.
         const now = Date.now()
-        if (now - lastReport.current < 500) return
+        if (now - lastReport.current < 200) return
         lastReport.current = now
         api.audioReport({ itemTake: item.take, itemTime: e.currentTarget.currentTime, itemDuration: e.currentTarget.duration || 0 })
       }}

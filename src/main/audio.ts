@@ -36,6 +36,7 @@ let shufflePlayed = new Set<number>()
 let videoPlaying: () => boolean = () => false
 let notify: () => void = () => {}
 let onItemEnded: (itemId: string) => void = () => {}
+let onItemTime: (itemId: string, time: number) => void = () => {}
 let notifyTimer: NodeJS.Timeout | null = null
 
 export function defaultAudioSettings(): AudioSettings {
@@ -48,13 +49,20 @@ export function audioSettings(): AudioSettings {
 
 export function connectAudio(
   s: Settings,
-  options: { videoPlaying: () => boolean; onChange: () => void; onItemEnded: (itemId: string) => void }
+  options: {
+    videoPlaying: () => boolean
+    onChange: () => void
+    onItemEnded: (itemId: string) => void
+    /** The time of the audio item moved (the slides of a hymn follow it). */
+    onItemTime?: (itemId: string, time: number) => void
+  }
 ): void {
   settings = s
   settings.audio = { ...defaultAudioSettings(), ...settings.audio }
   videoPlaying = options.videoPlaying
   notify = options.onChange
   onItemEnded = options.onItemEnded
+  onItemTime = options.onItemTime ?? onItemTime
   // The cached copies of the music may be gone (cache cleared): copy again.
   settings.audio.playlist = settings.audio.playlist.map((m) => mediaRef(m.path) ?? m)
   ensureWindow()
@@ -318,6 +326,7 @@ export function report(r: {
     if (r.itemTime !== undefined) {
       item.time = r.itemTime
       item.duration = r.itemDuration ?? 0
+      onItemTime(item.itemId, item.time)
     }
     changed()
   }

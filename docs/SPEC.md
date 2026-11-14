@@ -107,12 +107,19 @@ See `docs/design/Main.dc.html`. Dark theme (dim room).
 ### 5.1 Top bar
 - Left: Service / Screens tabs. Center: app name. Right: clock and elapsed
   time, the "No output screen" chip when it applies, and the buttons.
-- Buttons: **Logo**, **Clear text**, **Black screen (all)**.
+- Buttons: **Logo**, **Clear text**, **Black screen (all)**, **Hide screens**.
+- **Hide screens** hides all output windows (it does not close them), so the
+  output screens show the Windows desktop: a Zoom window, a browser, another
+  program. This is the only case where a screen may show the desktop, and only
+  the operator turns it on. While it is on, the button is yellow and says
+  "Screens are HIDDEN — click to show". Items stay live and sound keeps
+  playing. Output windows that open while it is on stay hidden. It is not
+  saved: when the app starts, the screens show.
 
 ### 5.2 Left panel: Order / Bible / Library tabs
 
 The Order tab is labeled "Playlist" in the app. This document and the code still call it the order.
-- Tab order: Order, Bible, Library. **Ctrl+1**, **Ctrl+2**, **Ctrl+3** open them
+- Tab order: Order, Bible, Library, Hymnal. **Ctrl+1** to **Ctrl+4** open them
   (from anywhere, also from an input). Each tab shows its key next to its name.
 
 **Order tab**
@@ -247,6 +254,38 @@ The Order tab is labeled "Playlist" in the app. This document and the code still
   selected.
 - Both options are check boxes under the Bible tools and are saved in the
   settings (`bibleOptions`).
+
+### 5.5b Hymnal tab
+- The fourth tab (**Ctrl+4**; **Ctrl+H** opens it and puts the cursor in the
+  search input). Left column: search, list of hymns, the hymnal folder. Center:
+  the slides of the chosen hymn, the music choice, Add to playlist, Show now.
+- **Hymnal folder.** The team copies the files into one folder; the app only
+  reads it. `Letra/<number - title>/01.jpg…` (one picture per slide),
+  `Musica/Cantado/<number - title>.mp3` (sung), `Musica/Instrumental/…` (track
+  only), and an optional `himnos.json` (titles with accents, slide times). A
+  hymn is found by the number at the start of the name. Default folder:
+  `himnario/` in the project (dev copy) or `Documents\Himnario` (installed
+  app); "Change folder…" chooses another one. See `himnario/README.md`.
+- The hymn files play from the hymnal folder itself, as `media://hymnal/…`.
+  They are not copied to the media cache: the folder is on this computer and
+  is about 3.8 GB.
+- Search by number (that hymn first, then numbers that start with it) or by
+  words of the title. Accents and case do not matter. ↑ ↓ choose, Enter adds
+  to the playlist, Ctrl+Enter shows now.
+- A hymn in the playlist is a slides item (`ServiceItem.hymn`) with a music
+  choice: Sung, Track only, No music. Track only is the default; another
+  choice in the Hymnal tab is remembered on that computer. When it goes live the music starts on
+  the audio layer and the background music fades out. The music stops when
+  the slides of the hymn leave the screens.
+- **Slides follow the music** (on by default, when `himnos.json` has the
+  times): when the music passes the start time of a slide, the screens show
+  that slide. Between two start times the arrow keys still change the slide.
+  A double-click on a slide makes the music jump to the start of that slide.
+- A key press after the last slide of a hymn does nothing (the last slide
+  stays). Esc Esc or the next item takes the hymn off.
+- Later: hymns as real text over a background that can be changed, so the
+  pictures are not needed. The song text layer (section 6, Song) is the base
+  for that.
 
 ### 5.6 Bottom: Hotkeys + Audio / Message / Stage tabs
 - **One slim bar (about 44 px), always visible.** From left to right:
@@ -408,7 +447,7 @@ main computer.
 ## 12. Updates over the internet
 
 New versions are published on GitHub Releases
-(`github.com/cesh13/iad7-media-console`, a public repository). The installed
+(`github.com/iglesia-adventista-miramonte/HimnarioAdventista`, a public repository). The installed
 app updates itself from there. No server of our own is needed.
 
 **On the church computer**

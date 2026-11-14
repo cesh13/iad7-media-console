@@ -1,5 +1,14 @@
 # Changes
 
+## Not released yet
+
+- New Hymnal tab (Ctrl+4, or Ctrl+H to open it and search): the hymns of the Himnario Adventista, from a folder of pictures and music. Search by number or title, choose "Sung", "Track only" or "No music", then add the hymn to the playlist or show it now.
+- When a hymn goes live, its music starts and the slides follow the music. The arrow keys still change the slide. A double-click on a slide makes the music jump to that slide. The music stops when the hymn leaves the screens.
+- The hymn files are not part of the app. Copy them into the hymnal folder (`Documents\Himnario`, or a folder chosen in the Hymnal tab). `npm run himnario` copies them from the old "Himnario Adventista" program.
+- The music of a hymn is "Track only" unless you choose another kind. The app remembers the last choice on that computer.
+- New "Hide screens" button in the top bar: it takes this app off the output screens, so they show the Windows desktop (Zoom, a browser, another program). The button is yellow while the screens are hidden; click it again to show the screens. Items stay live and sound keeps playing while the screens are hidden.
+- Updates now come from this project's own GitHub releases.
+
 ## 1.4.0 – 2026-11-10
 
 - New start screen when the app opens: continue the last service, start a new service from a preset, open a recent service, or start an empty one. "Start screen" in the bottom bar opens it again.

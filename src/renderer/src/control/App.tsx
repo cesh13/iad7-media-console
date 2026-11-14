@@ -82,6 +82,13 @@ export function App() {
               >
                 {overlays.black ? strings.blackOn : strings.blackAll}
               </button>
+              <button
+                className={state.screensHidden ? 'btn btn-hidden is-on' : 'btn btn-hidden'}
+                title={state.screensHidden ? strings.screensHiddenHint : strings.hideScreensHint}
+                onClick={() => void api.setScreensHidden(!state.screensHidden)}
+              >
+                {state.screensHidden ? strings.screensHiddenOn : strings.hideScreens}
+              </button>
             </>
           )}
         </div>
